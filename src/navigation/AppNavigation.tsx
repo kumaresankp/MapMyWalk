@@ -10,6 +10,7 @@ import {
 import HomeScreen from '../screens/HomeScreen';
 import WorkoutScreen from '../screens/WorkoutScreen';
 import WorkoutSummaryScreen from '../screens/WorkoutSummaryScreen';
+import BootSplash from 'react-native-bootsplash';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -31,7 +32,11 @@ const Stack =
 
 const AppNavigation = () => {
   return (
-    <NavigationContainer>
+    <NavigationContainer
+        onReady={() => {
+          BootSplash.hide({fade: true});
+        }}
+      >
       <Stack.Navigator
         initialRouteName="Home"
         screenOptions={{

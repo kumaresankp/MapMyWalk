@@ -602,6 +602,25 @@ const calculateBearing = (
 
   return (bearing + 360) % 360;
 };
+
+const currentBearing = useMemo(() => {
+  if (gpsPoints.length < 2) {
+    return 0;
+  }
+
+  const previousPoint =
+    gpsPoints[gpsPoints.length - 2];
+
+  const currentPoint =
+    gpsPoints[gpsPoints.length - 1];
+
+  return calculateBearing(
+    previousPoint,
+    currentPoint,
+  );
+}, [gpsPoints]);
+
+
 if (!currentLocation) {
   return (
     <SafeAreaView style={styles.locationScreen}>
@@ -698,19 +717,28 @@ if (!currentLocation) {
             }}
           />
           {currentLocation && (
-          <Marker
-            id="current-location"
-            lngLat={[
-              currentLocation.longitude,
-              currentLocation.latitude,
-            ]}>
+  <Marker
+    id="current-location"
+    anchor="center"
+    lngLat={[
+      currentLocation.longitude,
+      currentLocation.latitude,
+    ]}>
 
-            <View style={styles.currentLocationMarker}>
-              <View style={styles.currentLocationDot} />
-            </View>
+    <View style={styles.locationMarker}>
 
-          </Marker>
-        )}
+      {/* Direction arrow */}
+      {gpsPoints.length >= 2 && (
+        <View style={styles.directionArrow} />
+      )}
+
+      {/* Exact GPS position */}
+      <View style={styles.currentLocationDot} />
+
+    </View>
+
+  </Marker>
+)}
 
           {routeCoordinates.length >= 2 && (
             <GeoJSONSource
@@ -978,15 +1006,6 @@ const styles = StyleSheet.create({
   justifyContent: 'center',
 },
 
-currentLocationDot: {
-  width: 18,
-  height: 18,
-  borderRadius: 9,
-  backgroundColor: '#2196F3',
-  borderWidth: 3,
-  borderColor: '#FFFFFF',
-},
-
 locationScreen: {
   flex: 1,
   backgroundColor: '#F7F9FC',
@@ -1068,6 +1087,49 @@ cancelButtonText: {
   fontSize: 14,
   fontWeight: '700',
   color: '#444444',
+},
+
+locationMarker: {
+  width: 40,
+  height: 40,
+  alignItems: 'center',
+  justifyContent: 'center',
+  position: 'relative',
+},
+
+directionArrow: {
+  position: 'absolute',
+  top: -3,
+  left: 14,
+  width: 0,
+  height: 0,
+  borderLeftWidth: 6,
+  borderRightWidth: 6,
+  borderBottomWidth: 14,
+  borderLeftColor: 'transparent',
+  borderRightColor: 'transparent',
+  borderBottomColor: '#2196F3',
+},
+
+currentLocationDot: {
+  position: 'absolute',
+  top: 11,
+  left: 11,
+  width: 18,
+  height: 18,
+  borderRadius: 9,
+  backgroundColor: '#2196F3',
+  borderWidth: 3,
+  borderColor: '#FFFFFF',
+
+  shadowColor: '#000000',
+  shadowOffset: {
+    width: 0,
+    height: 2,
+  },
+  shadowOpacity: 0.25,
+  shadowRadius: 3,
+  elevation: 4,
 },
 
 });
