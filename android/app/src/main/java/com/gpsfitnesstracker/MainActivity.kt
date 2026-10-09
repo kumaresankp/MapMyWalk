@@ -12,7 +12,7 @@ import com.zoontek.rnbootsplash.RNBootSplash
 class MainActivity : ReactActivity() {
 
   override fun getMainComponentName(): String =
-      "GPSFitnessTracker"
+      "MyWalkMap"
 
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(

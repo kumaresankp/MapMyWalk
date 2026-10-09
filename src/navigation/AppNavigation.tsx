@@ -10,6 +10,8 @@ import {
 import HomeScreen from '../screens/HomeScreen';
 import WorkoutScreen from '../screens/WorkoutScreen';
 import WorkoutSummaryScreen from '../screens/WorkoutSummaryScreen';
+import WorkoutHistoryScreen from '../screens/WorkoutHistoryScreen';
+import WorkoutDetailScreen from '../screens/WorkoutDetailScreen';
 import BootSplash from 'react-native-bootsplash';
 
 export type RootStackParamList = {
@@ -24,6 +26,15 @@ export type RootStackParamList = {
     distance: number;
     elapsedTime: number;
     gpsPoints: any[];
+    calories?: number | null;
+    elevationGain?: number | null;
+    averagePace?: number | null;
+  };
+
+  WorkoutHistory: undefined;
+
+  WorkoutDetail: {
+    workoutId: string;
   };
 };
 
@@ -56,6 +67,16 @@ const AppNavigation = () => {
         <Stack.Screen
           name="WorkoutSummary"
           component={WorkoutSummaryScreen}
+        />
+
+        <Stack.Screen
+          name="WorkoutHistory"
+          component={WorkoutHistoryScreen}
+        />
+
+        <Stack.Screen
+          name="WorkoutDetail"
+          component={WorkoutDetailScreen}
         />
 
       </Stack.Navigator>

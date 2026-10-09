@@ -8,5 +8,9 @@ export type StoredWorkout = {
   elapsedTime: number;
   distance: number;
   gpsPointCount: number;
-  paceSecondsPerKm: number | null;
+  averagePace: number | null;
+  paceSecondsPerKm?: number | null;
+  calories?: number | null;
+  elevationGain?: number | null;
+  userWeightKg?: number | null;
 };

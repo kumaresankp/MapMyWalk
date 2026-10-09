@@ -4,6 +4,7 @@ import React, {
 } from 'react';
 
 import {
+  Alert,
   SafeAreaView,
   View,
   Text,
@@ -92,6 +93,13 @@ const HomeScreen = ({
       {
         workoutType,
       },
+    );
+  };
+
+  const showPrivacyNotice = () => {
+    Alert.alert(
+      'Privacy & Data',
+      'GPS Fitness Tracker uses your location only to record workout routes and store them locally on this device. At this stage, no cloud synchronization or automatic uploads are implemented.',
     );
   };
 
@@ -191,6 +199,18 @@ const HomeScreen = ({
         </View>
       </View>
 
+      <TouchableOpacity
+        style={styles.privacyButton}
+        onPress={showPrivacyNotice}>
+        <Text style={styles.privacyButtonText}>Privacy & Data</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.historyButton}
+        onPress={() => navigation.navigate('WorkoutHistory')}>
+        <Text style={styles.historyButtonText}>View Workout History</Text>
+      </TouchableOpacity>
+
       {/* Recent workouts */}
       <View style={styles.recentContainer}>
         <View
@@ -199,9 +219,9 @@ const HomeScreen = ({
             Recent Workouts
           </Text>
 
-          <Text style={styles.countText}>
-            {workouts.length}
-          </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('WorkoutHistory')}>
+            <Text style={styles.historyLink}>See all</Text>
+          </TouchableOpacity>
         </View>
 
         {workouts.length === 0 ? (
@@ -224,9 +244,10 @@ const HomeScreen = ({
           workouts
             .slice(0, 3)
             .map(workout => (
-              <View
+              <TouchableOpacity
                 key={workout.id}
-                style={styles.workoutCard}>
+                style={styles.workoutCard}
+                onPress={() => navigation.navigate('WorkoutDetail', {workoutId: workout.id})}>
 
                 <View>
                   <Text
@@ -275,7 +296,7 @@ const HomeScreen = ({
                     min
                   </Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
         )}
       </View>
@@ -397,6 +418,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+
+  privacyButton: {
+    backgroundColor: '#F4F7FB',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+
+  privacyButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#425466',
+  },
+
+  historyButton: {
+    backgroundColor: '#EAF3FF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+
+  historyButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1764D9',
+  },
+
+  historyLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1764D9',
   },
 
   countText: {

@@ -1,7 +1,9 @@
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation, {
+  type GeolocationResponse,
+} from '@react-native-community/geolocation';
 
 export const startLocationTracking = (
-  onLocationUpdate: (location: Geolocation.GeoPosition) => void,
+  onLocationUpdate: (location: GeolocationResponse) => void,
 ) => {
   const watchId = Geolocation.watchPosition(
     position => {

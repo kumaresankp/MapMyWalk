@@ -1,158 +1,107 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import {
-  StoredWorkout,
-} from '../types/Workout';
-
-import {
-  GPSPoint,
-} from '../utils/GPSUtils';
+import {StoredWorkout} from '../types/Workout';
+import {GPSPoint} from '../utils/GPSUtils';
 
 const WORKOUTS_KEY = '@gps_fitness_workouts';
-
 const ROUTE_PREFIX = '@gps_fitness_route_';
 
-/*
- * Get all saved workouts
- */
-export const getWorkouts =
-  async (): Promise<StoredWorkout[]> => {
-    try {
-      const data =
-        await AsyncStorage.getItem(WORKOUTS_KEY);
+const normalizeWorkout = (workout: Partial<StoredWorkout>): StoredWorkout => {
+  const distance = Number(workout.distance ?? 0);
+  const elapsedTime = Number(workout.elapsedTime ?? 0);
+  const gpsPointCount = Number(workout.gpsPointCount ?? 0);
+  const paceSecondsPerKm =
+    workout.averagePace ?? workout.paceSecondsPerKm ?? null;
 
-      if (!data) {
-        return [];
-      }
+  return {
+    id: workout.id ?? `workout_${Date.now()}`,
+    workoutType: workout.workoutType === 'Run' ? 'Run' : 'Walk',
+    startedAt: Number(workout.startedAt ?? Date.now()),
+    finishedAt: Number(workout.finishedAt ?? Date.now()),
+    elapsedTime,
+    distance,
+    gpsPointCount: Number.isFinite(gpsPointCount) ? gpsPointCount : 0,
+    averagePace: Number.isFinite(Number(paceSecondsPerKm)) ? Number(paceSecondsPerKm) : null,
+    paceSecondsPerKm:
+      Number.isFinite(Number(paceSecondsPerKm)) ? Number(paceSecondsPerKm) : null,
+    calories: workout.calories ?? null,
+    elevationGain: workout.elevationGain ?? null,
+    userWeightKg: workout.userWeightKg ?? null,
+  };
+};
 
-      return JSON.parse(data);
-    } catch (error) {
-      console.log(
-        'Error reading workouts:',
-        error,
-      );
+export const getWorkouts = async (): Promise<StoredWorkout[]> => {
+  try {
+    const data = await AsyncStorage.getItem(WORKOUTS_KEY);
 
+    if (!data) {
       return [];
     }
-  };
 
-/*
- * Save completed workout
- */
+    const parsed = JSON.parse(data);
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    const workouts = parsed.map(item => normalizeWorkout(item as Partial<StoredWorkout>));
+
+    await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify(workouts));
+
+    return workouts;
+  } catch (error) {
+    console.log('Error reading workouts:', error);
+    return [];
+  }
+};
+
 export const saveWorkout = async (
   workout: StoredWorkout,
   gpsPoints: GPSPoint[],
 ): Promise<void> => {
   try {
-    const existingWorkouts =
-      await getWorkouts();
+    const normalizedWorkout = normalizeWorkout(workout);
+    const existingWorkouts = await getWorkouts();
+    const updatedWorkouts = [normalizedWorkout, ...existingWorkouts.filter(item => item.id !== normalizedWorkout.id)];
 
-    const updatedWorkouts = [
-      workout,
-      ...existingWorkouts,
-    ];
-
-    await AsyncStorage.setItem(
-      WORKOUTS_KEY,
-      JSON.stringify(updatedWorkouts),
-    );
-
-    /*
-     * Store route separately
-     */
-    await AsyncStorage.setItem(
-      `${ROUTE_PREFIX}${workout.id}`,
-      JSON.stringify(gpsPoints),
-    );
-
-    console.log(
-      'Workout saved successfully:',
-      workout.id,
-    );
+    await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify(updatedWorkouts));
+    await AsyncStorage.setItem(`${ROUTE_PREFIX}${normalizedWorkout.id}`, JSON.stringify(gpsPoints));
   } catch (error) {
-    console.log(
-      'Error saving workout:',
-      error,
-    );
-
+    console.log('Error saving workout:', error);
     throw error;
   }
 };
 
-/*
- * Get one workout
- */
-export const getWorkout = async (
-  id: string,
-): Promise<StoredWorkout | null> => {
-  const workouts =
-    await getWorkouts();
-
-  return (
-    workouts.find(
-      workout => workout.id === id,
-    ) ?? null
-  );
+export const getWorkout = async (id: string): Promise<StoredWorkout | null> => {
+  const workouts = await getWorkouts();
+  return workouts.find(workout => workout.id === id) ?? null;
 };
 
-/*
- * Get route points
- */
-export const getWorkoutRoute =
-  async (
-    id: string,
-  ): Promise<GPSPoint[]> => {
-    try {
-      const data =
-        await AsyncStorage.getItem(
-          `${ROUTE_PREFIX}${id}`,
-        );
+export const getWorkoutRoute = async (id: string): Promise<GPSPoint[]> => {
+  try {
+    const data = await AsyncStorage.getItem(`${ROUTE_PREFIX}${id}`);
 
-      if (!data) {
-        return [];
-      }
-
-      return JSON.parse(data);
-    } catch (error) {
-      console.log(
-        'Error reading route:',
-        error,
-      );
-
+    if (!data) {
       return [];
     }
-  };
 
-/*
- * Delete workout
- */
-export const deleteWorkout =
-  async (
-    id: string,
-  ): Promise<void> => {
-    try {
-      const workouts =
-        await getWorkouts();
+    const parsed = JSON.parse(data);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.log('Error reading route:', error);
+    return [];
+  }
+};
 
-      const updatedWorkouts =
-        workouts.filter(
-          workout => workout.id !== id,
-        );
+export const deleteWorkout = async (id: string): Promise<void> => {
+  try {
+    const workouts = await getWorkouts();
+    const updatedWorkouts = workouts.filter(workout => workout.id !== id);
 
-      await AsyncStorage.setItem(
-        WORKOUTS_KEY,
-        JSON.stringify(updatedWorkouts),
-      );
-
-      await AsyncStorage.removeItem(
-        `${ROUTE_PREFIX}${id}`,
-      );
-    } catch (error) {
-      console.log(
-        'Error deleting workout:',
-        error,
-      );
-
-      throw error;
-    }
-  };
+    await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify(updatedWorkouts));
+    await AsyncStorage.removeItem(`${ROUTE_PREFIX}${id}`);
+  } catch (error) {
+    console.log('Error deleting workout:', error);
+    throw error;
+  }
+};

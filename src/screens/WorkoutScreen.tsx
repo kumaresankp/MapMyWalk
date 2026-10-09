@@ -27,13 +27,17 @@ import {
   Marker,
 } from '@maplibre/maplibre-react-native';
 
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation, {
+  type GeolocationResponse,
+} from '@react-native-community/geolocation';
 
 import {
   GPSPoint,
   calculateDistance,
   isValidGPSPoint,
 } from '../utils/GPSUtils';
+import {estimateCalories} from '../utils/CalorieUtils';
+import {calculateElevationGain} from '../utils/ElevationUtils';
 
 type WorkoutScreenProps = {
   route: {
@@ -102,7 +106,7 @@ const WorkoutScreen = ({
    * Convert native position to our GPSPoint
    */
   const createGPSPoint = (
-    position: Geolocation.GeoPosition,
+    position: GeolocationResponse,
   ): GPSPoint => {
     return {
       latitude: position.coords.latitude,
@@ -120,7 +124,7 @@ const WorkoutScreen = ({
    * Process GPS position
    */
   const processGPSPosition = (
-    position: Geolocation.GeoPosition,
+    position: GeolocationResponse,
   ) => {
     console.log(
       'GPS SUCCESS:',
@@ -496,67 +500,49 @@ const WorkoutScreen = ({
               watchIdRef.current = null;
             }
 
-            /*
-             * Calculate pace
-             */
-            let paceSecondsPerKm:
-              number | null = null;
-
+            let averagePace = null;
             if (distance > 0) {
-              const distanceKm =
-                distance / 1000;
-
-              paceSecondsPerKm =
-                elapsedTime / distanceKm;
+              const distanceKm = distance / 1000;
+              averagePace = elapsedTime / distanceKm;
             }
 
-            /*
-             * Create workout ID
-             */
-            const workoutId =
-              `workout_${Date.now()}`;
+            const calories = estimateCalories({
+              workoutType,
+              durationSeconds: elapsedTime,
+              distanceMeters: distance,
+              weightKg: 70,
+              gpsPoints,
+            });
 
-            /*
-             * Create saved workout
-             */
+            const elevationGain = calculateElevationGain(gpsPoints);
+
+            const workoutId = `workout_${Date.now()}`;
+
             const workout: StoredWorkout = {
               id: workoutId,
               workoutType,
-              startedAt:
-                startedAtRef.current,
+              startedAt: startedAtRef.current,
               finishedAt: Date.now(),
               elapsedTime,
               distance,
-              gpsPointCount:
-                gpsPoints.length,
-              paceSecondsPerKm,
+              gpsPointCount: gpsPoints.length,
+              averagePace,
+              paceSecondsPerKm: averagePace,
+              calories,
+              elevationGain,
             };
 
-            /*
-             * Save workout + GPS route
-             */
-            await saveWorkout(
-              workout,
+            await saveWorkout(workout, gpsPoints);
+
+            navigation.navigate('WorkoutSummary', {
+              workoutType,
+              distance,
+              elapsedTime,
               gpsPoints,
-            );
-
-            console.log(
-              'WORKOUT SAVED:',
-              workout,
-            );
-
-            /*
-             * Open summary
-             */
-            navigation.navigate(
-              'WorkoutSummary',
-              {
-                workoutType,
-                distance,
-                elapsedTime,
-                gpsPoints,
-              },
-            );
+              calories,
+              elevationGain,
+              averagePace,
+            });
           } catch (error) {
             console.log(
               'FINISH WORKOUT ERROR:',

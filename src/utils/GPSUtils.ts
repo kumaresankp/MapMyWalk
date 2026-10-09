@@ -37,89 +37,39 @@ export const calculateDistance = (
   return R * c;
 };
 
-
 export const isValidGPSPoint = (
   previousPoint: GPSPoint | null,
   newPoint: GPSPoint,
 ): boolean => {
-  console.log('--- GPS VALIDATION ---');
-
-  console.log('New latitude:', newPoint.latitude);
-  console.log('New longitude:', newPoint.longitude);
-  console.log('Accuracy:', newPoint.accuracy);
+  if (!Number.isFinite(newPoint.latitude) || !Number.isFinite(newPoint.longitude)) {
+    return false;
+  }
 
   if (newPoint.accuracy > MAX_ACCURACY) {
-    console.log(
-      '❌ REJECTED: Poor accuracy',
-      newPoint.accuracy,
-    );
-
     return false;
   }
 
   if (!previousPoint) {
-    console.log('✅ ACCEPTED: First GPS point');
     return true;
   }
 
-  const distance = calculateDistance(
-    previousPoint,
-    newPoint,
-  );
-
-  console.log(
-    'Distance from previous point:',
-    distance,
-    'meters',
-  );
+  const distance = calculateDistance(previousPoint, newPoint);
 
   if (distance < MIN_DISTANCE) {
-    console.log(
-      '❌ REJECTED: Movement too small',
-      distance,
-    );
-
     return false;
   }
 
-  const timeDifference =
-    (newPoint.timestamp -
-      previousPoint.timestamp) /
-    1000;
-
-  console.log(
-    'Time difference:',
-    timeDifference,
-    'seconds',
-  );
+  const timeDifference = (newPoint.timestamp - previousPoint.timestamp) / 1000;
 
   if (timeDifference <= 0) {
-    console.log(
-      '❌ REJECTED: Invalid timestamp',
-    );
-
     return false;
   }
 
-  const calculatedSpeed =
-    distance / timeDifference;
-
-  console.log(
-    'Calculated speed:',
-    calculatedSpeed,
-    'm/s',
-  );
+  const calculatedSpeed = distance / timeDifference;
 
   if (calculatedSpeed > MAX_SPEED) {
-    console.log(
-      '❌ REJECTED: Unrealistic speed',
-      calculatedSpeed,
-    );
-
     return false;
   }
-
-  console.log('✅ GPS POINT ACCEPTED');
 
   return true;
 };
