@@ -1,4 +1,4 @@
-package com.gpsfitnesstracker
+package app.mywalkmap
 
 import android.os.Bundle
 

@@ -1,4 +1,4 @@
-package com.gpsfitnesstracker
+package app.mywalkmap
 
 import android.app.Application
 import com.facebook.react.PackageList
