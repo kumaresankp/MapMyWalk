@@ -1,84 +1,35 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {
+  ActivityIndicator,
   Alert,
-  SafeAreaView,
+  Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 
+import {AppHeader, EmptyState, WorkoutCard} from '../components';
 import {getWorkouts} from '../services/WorkoutStorage';
+import {formatDuration} from '../theme/formatters';
+import {COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
 import {StoredWorkout} from '../types/Workout';
 
 type Props = {
   navigation: any;
 };
 
-const formatDuration = (seconds: number): string => {
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    return '00:00';
-  }
+type FilterType = 'All' | 'Walk' | 'Run';
 
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-
-  if (hours > 0) {
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-  }
-
-  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
-
-const formatPace = (paceSecondsPerKm: number | null): string => {
-  if (!paceSecondsPerKm || paceSecondsPerKm <= 0) {
-    return '—';
-  }
-
-  const totalSeconds = Math.round(paceSecondsPerKm);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-};
-
-const HistoryItem = ({
-  workout,
-  onPress,
-}: {
-  workout: StoredWorkout;
-  onPress: () => void;
-}) => (
-  <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
-    <View style={styles.cardHeader}>
-      <Text style={styles.typeText}>{workout.workoutType === 'Walk' ? '🚶 Walk' : '🏃 Run'}</Text>
-      <Text style={styles.dateText}>{new Date(workout.finishedAt).toLocaleDateString()}</Text>
-    </View>
-
-    <View style={styles.statRow}>
-      <View style={styles.statBlock}>
-        <Text style={styles.valueText}>{(workout.distance / 1000).toFixed(2)} km</Text>
-        <Text style={styles.labelText}>Distance</Text>
-      </View>
-
-      <View style={styles.statBlock}>
-        <Text style={styles.valueText}>{formatDuration(workout.elapsedTime)}</Text>
-        <Text style={styles.labelText}>Time</Text>
-      </View>
-
-      <View style={styles.statBlock}>
-        <Text style={styles.valueText}>{formatPace(workout.averagePace ?? workout.paceSecondsPerKm ?? null)}</Text>
-        <Text style={styles.labelText}>Pace</Text>
-      </View>
-    </View>
-  </TouchableOpacity>
-);
+const FILTERS: FilterType[] = ['All', 'Walk', 'Run'];
 
 const WorkoutHistoryScreen = ({navigation}: Props) => {
   const [workouts, setWorkouts] = useState<StoredWorkout[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState<FilterType>('All');
 
   useFocusEffect(
     useCallback(() => {
@@ -89,8 +40,12 @@ const WorkoutHistoryScreen = ({navigation}: Props) => {
           const saved = await getWorkouts();
           if (isActive) {
             setWorkouts(saved);
+            setIsLoading(false);
           }
-        } catch (error) {
+        } catch {
+          if (isActive) {
+            setIsLoading(false);
+          }
           Alert.alert('Storage Error', 'Unable to load saved workouts.');
         }
       };
@@ -103,33 +58,123 @@ const WorkoutHistoryScreen = ({navigation}: Props) => {
     }, []),
   );
 
+  const filteredWorkouts = useMemo(() => {
+    if (filter === 'All') {
+      return workouts;
+    }
+    return workouts.filter(workout => workout.workoutType === filter);
+  }, [workouts, filter]);
+
+  const totals = useMemo(() => {
+    return filteredWorkouts.reduce(
+      (acc, item) => ({
+        distance: acc.distance + item.distance,
+        duration: acc.duration + item.elapsedTime,
+      }),
+      {distance: 0, duration: 0},
+    );
+  }, [filteredWorkouts]);
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>‹</Text>
-        </TouchableOpacity>
+      <StatusBar barStyle="dark-content" />
 
-        <Text style={styles.headerTitle}>Workout History</Text>
+      <AppHeader
+        title="Workout History"
+        subtitle={
+          workouts.length > 0
+            ? `${workouts.length} recorded ${workouts.length === 1 ? 'session' : 'sessions'}`
+            : undefined
+        }
+        onBackPress={() => navigation.goBack()}
+      />
 
-        <View style={styles.headerSpacer} />
-      </View>
-
-      {workouts.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>📈</Text>
-          <Text style={styles.emptyTitle}>No workouts saved yet</Text>
-          <Text style={styles.emptyText}>Complete a walk or run to see your history here.</Text>
+      {isLoading ? (
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingLabel}>Loading workout history…</Text>
+        </View>
+      ) : workouts.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <EmptyState
+            icon="history"
+            title="No workouts saved yet"
+            description="Complete a walk or run to build your personal activity log and route history."
+            actionLabel="Start a Workout"
+            onActionPress={() => navigation.goBack()}
+          />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {workouts.map(workout => (
-            <HistoryItem
-              key={workout.id}
-              workout={workout}
-              onPress={() => navigation.navigate('WorkoutDetail', {workoutId: workout.id})}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}>
+          {/* Filter Tabs */}
+          <View style={styles.filterBar}>
+            {FILTERS.map(item => {
+              const active = filter === item;
+              return (
+                <Pressable
+                  key={item}
+                  onPress={() => setFilter(item)}
+                  accessibilityRole="button"
+                  accessibilityState={{selected: active}}
+                  style={[
+                    styles.filterPill,
+                    active && styles.filterPillActive,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.filterText,
+                      active && styles.filterTextActive,
+                    ]}>
+                    {item}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Totals Summary Strip */}
+          <View style={styles.summaryStrip}>
+            <View style={styles.summaryCell}>
+              <Text style={styles.summaryValue}>{filteredWorkouts.length}</Text>
+              <Text style={styles.summaryLabel}>Sessions</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryCell}>
+              <Text style={styles.summaryValue}>
+                {(totals.distance / 1000).toFixed(2)} km
+              </Text>
+              <Text style={styles.summaryLabel}>Total Distance</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryCell}>
+              <Text style={styles.summaryValue}>
+                {formatDuration(totals.duration)}
+              </Text>
+              <Text style={styles.summaryLabel}>Total Time</Text>
+            </View>
+          </View>
+
+          {filteredWorkouts.length === 0 ? (
+            <EmptyState
+              icon={filter === 'Run' ? 'run' : 'walk'}
+              title={`No ${filter.toLowerCase()} workouts yet`}
+              description={`You haven't recorded any ${filter.toLowerCase()} sessions yet. Switch filters or start a new ${filter.toLowerCase()}.`}
+              actionLabel="Show All Workouts"
+              onActionPress={() => setFilter('All')}
             />
-          ))}
+          ) : (
+            filteredWorkouts.map(workout => (
+              <WorkoutCard
+                key={workout.id}
+                workout={workout}
+                onPress={() =>
+                  navigation.navigate('WorkoutDetail', {workoutId: workout.id})
+                }
+              />
+            ))
+          )}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -139,96 +184,86 @@ const WorkoutHistoryScreen = ({navigation}: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: COLORS.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E7ECF2',
-  },
-  backButton: {
-    fontSize: 36,
-    color: '#1D1D1D',
-    lineHeight: 36,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111111',
-  },
-  headerSpacer: {
-    width: 28,
-  },
-  scrollContent: {
-    padding: 16,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E9EEF5',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  typeText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111111',
-  },
-  dateText: {
-    color: '#666666',
-    fontSize: 12,
-  },
-  statRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statBlock: {
-    flex: 1,
-  },
-  valueText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  labelText: {
-    marginTop: 4,
-    fontSize: 11,
-    color: '#777777',
-    textTransform: 'uppercase',
-  },
-  emptyState: {
+  centerState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 30,
+    gap: SPACING.sm,
   },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
+  loadingLabel: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
   },
-  emptyTitle: {
-    fontSize: 24,
+  emptyWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.lg,
+  },
+  scrollContent: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xxl,
+  },
+  filterBar: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    padding: 4,
+    borderRadius: RADII.pill,
+    borderWidth: 1,
+    borderColor: COLORS.borderSubtle,
+    marginBottom: SPACING.md,
+  },
+  filterPill: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: RADII.pill,
+    alignItems: 'center',
+  },
+  filterPillActive: {
+    backgroundColor: COLORS.secondary,
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  filterTextActive: {
+    color: COLORS.textOnPrimary,
+  },
+  summaryStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    borderRadius: RADII.lg,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    marginBottom: SPACING.md,
+    ...SHADOWS.card,
+  },
+  summaryCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryValue: {
+    fontSize: 16,
     fontWeight: '800',
-    color: '#111111',
-    marginBottom: 8,
+    color: COLORS.textOnPrimary,
+    fontVariant: ['tabular-nums'],
   },
-  emptyText: {
-    fontSize: 14,
-    color: '#666666',
-    textAlign: 'center',
-    lineHeight: 21,
+  summaryLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.primaryMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginTop: 3,
+  },
+  summaryDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: 'rgba(255,255,255,0.16)',
   },
 });
 

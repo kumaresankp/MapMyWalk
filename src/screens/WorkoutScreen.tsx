@@ -1,29 +1,24 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
-  SafeAreaView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Animated,
   PermissionsAndroid,
   Platform,
-  Alert,
-  ActivityIndicator,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {
-  saveWorkout,
-} from '../services/WorkoutStorage';
-
-import {
-  StoredWorkout,
-} from '../types/Workout';
-
-import {
-  Map,
   Camera,
   GeoJSONSource,
   Layer,
+  Map,
   Marker,
 } from '@maplibre/maplibre-react-native';
 
@@ -32,12 +27,28 @@ import Geolocation, {
 } from '@react-native-community/geolocation';
 
 import {
+  AppIcon,
+  GPSQualityIndicator,
+  SecondaryButton,
+  StatusIndicator,
+} from '../components';
+import {saveWorkout} from '../services/WorkoutStorage';
+import {
+  COLORS,
+  MAP_STYLE_URL,
+  RADII,
+  SHADOWS,
+  SPACING,
+  TYPOGRAPHY,
+} from '../theme/theme';
+import {StoredWorkout} from '../types/Workout';
+import {estimateCalories} from '../utils/CalorieUtils';
+import {calculateElevationGain} from '../utils/ElevationUtils';
+import {
   GPSPoint,
   calculateDistance,
   isValidGPSPoint,
 } from '../utils/GPSUtils';
-import {estimateCalories} from '../utils/CalorieUtils';
-import {calculateElevationGain} from '../utils/ElevationUtils';
 
 type WorkoutScreenProps = {
   route: {
@@ -48,26 +59,48 @@ type WorkoutScreenProps = {
   navigation: any;
 };
 
-const WorkoutScreen = ({
-  route,
-  navigation,
-}: WorkoutScreenProps) => {
+const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
   const {workoutType} = route.params;
 
   const [gpsPoints, setGpsPoints] = useState<GPSPoint[]>([]);
   const [distance, setDistance] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [currentLocation, setCurrentLocation] =
-    useState<GPSPoint | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<GPSPoint | null>(null);
+  const [mapLoading, setMapLoading] = useState(true);
+  const [mapError, setMapError] = useState(false);
 
   const watchIdRef = useRef<number | null>(null);
   const lastPointRef = useRef<GPSPoint | null>(null);
   const isPausedRef = useRef(false);
-  const startedAtRef = useRef<number>(
-      Date.now(),
-    );
+  const startedAtRef = useRef<number>(Date.now());
   const cameraRef = useRef<any>(null);
+
+  const radarPulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (currentLocation) {
+      return;
+    }
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(radarPulse, {
+          toValue: 1,
+          duration: 1400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(radarPulse, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+
+    return () => loop.stop();
+  }, [currentLocation, radarPulse]);
 
   /*
    * Keep pause state available inside GPS callback
@@ -88,8 +121,7 @@ const WorkoutScreen = ({
       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
       {
         title: 'Location Permission',
-        message:
-          'This app needs your location to track your workout.',
+        message: 'This app needs your location to track your workout.',
         buttonPositive: 'Allow',
         buttonNegative: 'Deny',
       },
@@ -97,35 +129,27 @@ const WorkoutScreen = ({
 
     console.log('LOCATION PERMISSION:', granted);
 
-    return (
-      granted === PermissionsAndroid.RESULTS.GRANTED
-    );
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
   };
 
   /*
    * Convert native position to our GPSPoint
    */
-  const createGPSPoint = (
-    position: GeolocationResponse,
-  ): GPSPoint => {
+  const createGPSPoint = (position: GeolocationResponse): GPSPoint => {
     return {
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
       timestamp: position.timestamp,
       accuracy: position.coords.accuracy,
-      altitude:
-        position.coords.altitude ?? null,
-      speed:
-        position.coords.speed ?? null,
+      altitude: position.coords.altitude ?? null,
+      speed: position.coords.speed ?? null,
     };
   };
 
   /*
    * Process GPS position
    */
-  const processGPSPosition = (
-    position: GeolocationResponse,
-  ) => {
+  const processGPSPosition = (position: GeolocationResponse) => {
     console.log(
       'GPS SUCCESS:',
       position.coords.latitude,
@@ -160,10 +184,7 @@ const WorkoutScreen = ({
     /*
      * Validate GPS point
      */
-    const valid = isValidGPSPoint(
-      previousPoint,
-      newPoint,
-    );
+    const valid = isValidGPSPoint(previousPoint, newPoint);
 
     if (!valid) {
       console.log('GPS POINT REJECTED');
@@ -174,16 +195,9 @@ const WorkoutScreen = ({
     /*
      * Calculate distance
      */
-    const segmentDistance = calculateDistance(
-      previousPoint,
-      newPoint,
-    );
+    const segmentDistance = calculateDistance(previousPoint, newPoint);
 
-    console.log(
-      'GPS DISTANCE:',
-      segmentDistance,
-      'meters',
-    );
+    console.log('GPS DISTANCE:', segmentDistance, 'meters');
 
     /*
      * Update last point
@@ -193,10 +207,7 @@ const WorkoutScreen = ({
     /*
      * Add point
      */
-    setGpsPoints(previous => [
-      ...previous,
-      newPoint,
-    ]);
+    setGpsPoints(previous => [...previous, newPoint]);
 
     /*
      * Add distance
@@ -215,8 +226,7 @@ const WorkoutScreen = ({
    * Start workout
    */
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | null =
-      null;
+    let timer: ReturnType<typeof setInterval> | null = null;
 
     const startWorkout = async () => {
       /*
@@ -232,8 +242,7 @@ const WorkoutScreen = ({
       /*
        * Permission
        */
-      const permission =
-        await requestLocationPermission();
+      const permission = await requestLocationPermission();
 
       if (!permission) {
         Alert.alert(
@@ -296,11 +305,7 @@ const WorkoutScreen = ({
           );
         },
         error => {
-          console.log(
-            'INITIAL LOCATION ERROR:',
-            error.code,
-            error.message,
-          );
+          console.log('INITIAL LOCATION ERROR:', error.code, error.message);
         },
         {
           enableHighAccuracy: false,
@@ -319,11 +324,7 @@ const WorkoutScreen = ({
           processGPSPosition(position);
         },
         error => {
-          console.log(
-            'WATCH LOCATION ERROR:',
-            error.code,
-            error.message,
-          );
+          console.log('WATCH LOCATION ERROR:', error.code, error.message);
         },
         {
           enableHighAccuracy: true,
@@ -337,10 +338,7 @@ const WorkoutScreen = ({
 
       watchIdRef.current = id;
 
-      console.log(
-        'GPS WATCH STARTED:',
-        id,
-      );
+      console.log('GPS WATCH STARTED:', id);
     };
 
     startWorkout();
@@ -354,52 +352,42 @@ const WorkoutScreen = ({
       }
 
       if (watchIdRef.current !== null) {
-        Geolocation.clearWatch(
-          watchIdRef.current,
-        );
+        Geolocation.clearWatch(watchIdRef.current);
 
         watchIdRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-  if (
-    gpsPoints.length === 0 ||
-    !currentLocation ||
-    !cameraRef.current
-  ) {
-    return;
-  }
+    if (
+      gpsPoints.length === 0 ||
+      !currentLocation ||
+      !cameraRef.current
+    ) {
+      return;
+    }
 
-  const currentIndex =
-    gpsPoints.length - 1;
+    const currentIndex = gpsPoints.length - 1;
 
-  let bearing = 0;
+    let bearing = 0;
 
-  if (currentIndex > 0) {
-    const previousPoint =
-      gpsPoints[currentIndex - 1];
+    if (currentIndex > 0) {
+      const previousPoint = gpsPoints[currentIndex - 1];
 
-    const currentPoint =
-      gpsPoints[currentIndex];
+      const currentPoint = gpsPoints[currentIndex];
 
-    bearing = calculateBearing(
-      previousPoint,
-      currentPoint,
-    );
-  }
+      bearing = calculateBearing(previousPoint, currentPoint);
+    }
 
-  cameraRef.current.easeTo({
-    center: [
-      currentLocation.longitude,
-      currentLocation.latitude,
-    ],
-    zoom: 17,
-    bearing,
-    duration: 700,
-  });
-}, [currentLocation, gpsPoints]);
+    cameraRef.current.easeTo({
+      center: [currentLocation.longitude, currentLocation.latitude],
+      zoom: 17,
+      bearing,
+      duration: 700,
+    });
+  }, [currentLocation, gpsPoints]);
 
   /*
    * Format time
@@ -407,9 +395,7 @@ const WorkoutScreen = ({
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
 
-    const minutes = Math.floor(
-      (seconds % 3600) / 60,
-    );
+    const minutes = Math.floor((seconds % 3600) / 60);
 
     const remainingSeconds = seconds % 60;
 
@@ -440,23 +426,16 @@ const WorkoutScreen = ({
 
     const paceMinutes = Math.floor(pace);
 
-    const paceSeconds = Math.floor(
-      (pace - paceMinutes) * 60,
-    );
+    const paceSeconds = Math.floor((pace - paceMinutes) * 60);
 
-    return `${paceMinutes}:${paceSeconds
-      .toString()
-      .padStart(2, '0')} /km`;
+    return `${paceMinutes}:${paceSeconds.toString().padStart(2, '0')} /km`;
   };
 
   /*
    * Route coordinates
    */
   const routeCoordinates = useMemo(() => {
-    return gpsPoints.map(point => [
-      point.longitude,
-      point.latitude,
-    ]);
+    return gpsPoints.map(point => [point.longitude, point.latitude]);
   }, [gpsPoints]);
 
   /*
@@ -477,372 +456,373 @@ const WorkoutScreen = ({
    * Finish
    */
   const finishWorkout = () => {
-  Alert.alert(
-    'Finish Workout?',
-    'Are you sure you want to finish this workout?',
-    [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Finish',
-        onPress: async () => {
-          try {
-            /*
-             * Stop GPS
-             */
-            if (watchIdRef.current !== null) {
-              Geolocation.clearWatch(
-                watchIdRef.current,
-              );
-
-              watchIdRef.current = null;
-            }
-
-            let averagePace = null;
-            if (distance > 0) {
-              const distanceKm = distance / 1000;
-              averagePace = elapsedTime / distanceKm;
-            }
-
-            const calories = estimateCalories({
-              workoutType,
-              durationSeconds: elapsedTime,
-              distanceMeters: distance,
-              weightKg: 70,
-              gpsPoints,
-            });
-
-            const elevationGain = calculateElevationGain(gpsPoints);
-
-            const workoutId = `workout_${Date.now()}`;
-
-            const workout: StoredWorkout = {
-              id: workoutId,
-              workoutType,
-              startedAt: startedAtRef.current,
-              finishedAt: Date.now(),
-              elapsedTime,
-              distance,
-              gpsPointCount: gpsPoints.length,
-              averagePace,
-              paceSecondsPerKm: averagePace,
-              calories,
-              elevationGain,
-            };
-
-            await saveWorkout(workout, gpsPoints);
-
-            navigation.navigate('WorkoutSummary', {
-              workoutType,
-              distance,
-              elapsedTime,
-              gpsPoints,
-              calories,
-              elevationGain,
-              averagePace,
-            });
-          } catch (error) {
-            console.log(
-              'FINISH WORKOUT ERROR:',
-              error,
-            );
-
-            Alert.alert(
-              'Error',
-              'Could not save the workout.',
-            );
-          }
+    Alert.alert(
+      'Finish Workout?',
+      'Are you sure you want to finish this workout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
         },
-      },
-    ],
-  );
-};
-const calculateBearing = (
-  previous: GPSPoint,
-  current: GPSPoint,
-) => {
-  const lat1 =
-    (previous.latitude * Math.PI) / 180;
+        {
+          text: 'Finish',
+          onPress: async () => {
+            try {
+              /*
+               * Stop GPS
+               */
+              if (watchIdRef.current !== null) {
+                Geolocation.clearWatch(watchIdRef.current);
 
-  const lat2 =
-    (current.latitude * Math.PI) / 180;
+                watchIdRef.current = null;
+              }
 
-  const deltaLon =
-    ((current.longitude - previous.longitude) *
-      Math.PI) /
-    180;
+              let averagePace = null;
+              if (distance > 0) {
+                const distanceKm = distance / 1000;
+                averagePace = elapsedTime / distanceKm;
+              }
 
-  const y =
-    Math.sin(deltaLon) * Math.cos(lat2);
+              const calories = estimateCalories({
+                workoutType,
+                durationSeconds: elapsedTime,
+                distanceMeters: distance,
+                weightKg: 70,
+                gpsPoints,
+              });
 
-  const x =
-    Math.cos(lat1) * Math.sin(lat2) -
-    Math.sin(lat1) *
-      Math.cos(lat2) *
-      Math.cos(deltaLon);
+              const elevationGain = calculateElevationGain(gpsPoints);
 
-  const bearing =
-    (Math.atan2(y, x) * 180) / Math.PI;
+              const workoutId = `workout_${Date.now()}`;
 
-  return (bearing + 360) % 360;
-};
+              const workout: StoredWorkout = {
+                id: workoutId,
+                workoutType,
+                startedAt: startedAtRef.current,
+                finishedAt: Date.now(),
+                elapsedTime,
+                distance,
+                gpsPointCount: gpsPoints.length,
+                averagePace,
+                paceSecondsPerKm: averagePace,
+                calories,
+                elevationGain,
+              };
 
-const currentBearing = useMemo(() => {
-  if (gpsPoints.length < 2) {
-    return 0;
+              await saveWorkout(workout, gpsPoints);
+
+              navigation.navigate('WorkoutSummary', {
+                workoutType,
+                distance,
+                elapsedTime,
+                gpsPoints,
+                calories,
+                elevationGain,
+                averagePace,
+              });
+            } catch (error) {
+              console.log('FINISH WORKOUT ERROR:', error);
+
+              Alert.alert('Error', 'Could not save the workout.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const calculateBearing = (previous: GPSPoint, current: GPSPoint) => {
+    const lat1 = (previous.latitude * Math.PI) / 180;
+
+    const lat2 = (current.latitude * Math.PI) / 180;
+
+    const deltaLon = ((current.longitude - previous.longitude) * Math.PI) / 180;
+
+    const y = Math.sin(deltaLon) * Math.cos(lat2);
+
+    const x =
+      Math.cos(lat1) * Math.sin(lat2) -
+      Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLon);
+
+    const bearing = (Math.atan2(y, x) * 180) / Math.PI;
+
+    return (bearing + 360) % 360;
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const currentBearing = useMemo(() => {
+    if (gpsPoints.length < 2) {
+      return 0;
+    }
+
+    const previousPoint = gpsPoints[gpsPoints.length - 2];
+
+    const currentPoint = gpsPoints[gpsPoints.length - 1];
+
+    return calculateBearing(previousPoint, currentPoint);
+  }, [gpsPoints]);
+
+  if (!currentLocation) {
+    const ringScale = radarPulse.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.95, 1.45],
+    });
+    const ringOpacity = radarPulse.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.45, 0],
+    });
+
+    return (
+      <SafeAreaView style={styles.locationScreen}>
+        <StatusBar barStyle="dark-content" />
+
+        <View style={styles.locationContent}>
+          <StatusIndicator variant="searching" label={`Preparing ${workoutType}`} />
+
+          <View style={styles.radarStage}>
+            <Animated.View
+              style={[
+                styles.radarRing,
+                {
+                  transform: [{scale: ringScale}],
+                  opacity: ringOpacity,
+                },
+              ]}
+            />
+            <View style={styles.locationIconContainer}>
+              <AppIcon name="gps" size={34} color={COLORS.primary} />
+            </View>
+          </View>
+
+          <Text style={styles.locationLoadingTitle}>Finding Your Location</Text>
+
+          <Text style={styles.locationLoadingText}>
+            Waiting for a precise GPS lock before starting your {workoutType.toLowerCase()} route.
+          </Text>
+
+          <View style={styles.locationTipCard}>
+            <View style={styles.tipHeader}>
+              <View style={styles.tipIconWrap}>
+                <AppIcon name="pin" size={16} color={COLORS.primary} />
+              </View>
+              <Text style={styles.locationTipTitle}>Getting GPS signal</Text>
+            </View>
+
+            <Text style={styles.locationTipText}>
+              For better accuracy, make sure you're outdoors or near a window with clear sky view.
+            </Text>
+          </View>
+
+          <SecondaryButton
+            label="Cancel Workout"
+            tone="neutral"
+            onPress={() => navigation.goBack()}
+            style={styles.cancelButton}
+          />
+        </View>
+      </SafeAreaView>
+    );
   }
-
-  const previousPoint =
-    gpsPoints[gpsPoints.length - 2];
-
-  const currentPoint =
-    gpsPoints[gpsPoints.length - 1];
-
-  return calculateBearing(
-    previousPoint,
-    currentPoint,
-  );
-}, [gpsPoints]);
-
-
-if (!currentLocation) {
-  return (
-    <SafeAreaView style={styles.locationScreen}>
-      <View style={styles.locationContent}>
-
-        {/* Location Icon */}
-        <View style={styles.locationIconContainer}>
-          <Text style={styles.locationIcon}>📍</Text>
-        </View>
-
-        {/* Loading Indicator */}
-        <ActivityIndicator
-          size="large"
-          color="#2196F3"
-          style={styles.locationSpinner}
-        />
-
-        {/* Title */}
-        <Text style={styles.locationLoadingTitle}>
-          Finding Your Location
-        </Text>
-
-        {/* Description */}
-        <Text style={styles.locationLoadingText}>
-          We're getting a precise GPS location before
-          starting your workout.
-        </Text>
-
-        {/* Helpful message */}
-        <View style={styles.locationTipCard}>
-          <Text style={styles.locationTipTitle}>
-            📡 Getting GPS signal
-          </Text>
-
-          <Text style={styles.locationTipText}>
-            For better accuracy, make sure you're
-            outdoors or near a window.
-          </Text>
-        </View>
-
-        {/* Cancel */}
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.cancelButtonText}>
-            Cancel Workout
-          </Text>
-        </TouchableOpacity>
-
-      </View>
-    </SafeAreaView>
-  );
-}
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
 
-      {/* Header */}
+      {/* Top Athletic Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>‹</Text>
+          onPress={() => navigation.goBack()}
+          style={styles.headerBackButton}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Back">
+          <AppIcon name="back" size={20} color={COLORS.textOnPrimary} />
         </TouchableOpacity>
 
-        <View>
-          <Text style={styles.title}>
-            {workoutType}
-          </Text>
-
-          <Text style={styles.subtitle}>
-            {isPaused ? 'Paused' : 'Tracking'}
-          </Text>
+        <View style={styles.headerCenter}>
+          <View style={styles.workoutTypeBadge}>
+            <AppIcon
+              name={workoutType === 'Run' ? 'run' : 'walk'}
+              size={16}
+              color={COLORS.accent}
+            />
+            <Text style={styles.headerTitle}>{workoutType}</Text>
+          </View>
         </View>
 
-        <View style={{width: 30}} />
+        <View style={styles.headerRight}>
+          <StatusIndicator
+            variant={isPaused ? 'paused' : 'tracking'}
+            label={isPaused ? 'Paused' : 'Tracking'}
+          />
+        </View>
       </View>
 
-      {/* Map */}
+      {/* Hero Map Region */}
       <View style={styles.mapContainer}>
         <Map
           style={styles.map}
-          mapStyle="https://tiles.openfreemap.org/styles/liberty">
-
+          mapStyle={MAP_STYLE_URL}
+          attribution={true}
+          onDidFinishLoadingMap={() => {
+            setMapLoading(false);
+            setMapError(false);
+          }}
+          onDidFailLoadingMap={() => {
+            setMapLoading(false);
+            setMapError(true);
+          }}>
           <Camera
             ref={cameraRef}
             initialViewState={{
-              center: [
-                currentLocation.longitude,
-                currentLocation.latitude,
-              ],
+              center: [currentLocation.longitude, currentLocation.latitude],
               zoom: 16,
               bearing: 0,
             }}
           />
+
           {currentLocation && (
-  <Marker
-    id="current-location"
-    anchor="center"
-    lngLat={[
-      currentLocation.longitude,
-      currentLocation.latitude,
-    ]}>
+            <Marker
+              id="current-location"
+              anchor="center"
+              lngLat={[currentLocation.longitude, currentLocation.latitude]}>
+              <View style={styles.locationMarker}>
+                <View style={styles.locationHalo} />
 
-    <View style={styles.locationMarker}>
+                {/* Direction arrow */}
+                {gpsPoints.length >= 2 && (
+                  <View style={styles.directionArrow} />
+                )}
 
-      {/* Direction arrow */}
-      {gpsPoints.length >= 2 && (
-        <View style={styles.directionArrow} />
-      )}
-
-      {/* Exact GPS position */}
-      <View style={styles.currentLocationDot} />
-
-    </View>
-
-  </Marker>
-)}
+                {/* Exact GPS position */}
+                <View style={styles.currentLocationDot} />
+              </View>
+            </Marker>
+          )}
 
           {routeCoordinates.length >= 2 && (
-            <GeoJSONSource
-              id="workout-route"
-              data={routeGeoJSON}>
-
+            <GeoJSONSource id="workout-route" data={routeGeoJSON}>
               <Layer
                 id="workout-route-line"
                 type="line"
                 paint={{
-                  'line-color': '#2196F3',
-                  'line-width': 5,
-                  'line-opacity': 0.9,
+                  'line-color': COLORS.primary,
+                  'line-width': 5.5,
+                  'line-opacity': 0.94,
                 }}
               />
-
             </GeoJSONSource>
           )}
         </Map>
 
-        {/* GPS status */}
-        <View style={styles.gpsStatus}>
-          <Text style={styles.gpsStatusText}>
-            GPS Points: {gpsPoints.length}
-          </Text>
-
-          {currentLocation && (
-            <>
-              <Text style={styles.accuracyText}>
-                Accuracy:{' '}
-                {currentLocation.accuracy.toFixed(1)} m
-              </Text>
-
-              <Text style={styles.accuracyText}>
-                {currentLocation.latitude.toFixed(5)},{' '}
-                {currentLocation.longitude.toFixed(5)}
-              </Text>
-            </>
-          )}
+        {/* Floating GPS Quality Pill */}
+        <View style={styles.gpsOverlay}>
+          <GPSQualityIndicator
+            accuracy={currentLocation.accuracy}
+            pointCount={gpsPoints.length}
+          />
         </View>
+
+        {/* Map loading / error overlays */}
+        {mapLoading && !mapError ? (
+          <View style={styles.mapStatusPill}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <Text style={styles.mapStatusText}>Loading map…</Text>
+          </View>
+        ) : null}
+
+        {mapError ? (
+          <View style={styles.mapErrorBanner}>
+            <AppIcon name="alert" size={16} color={COLORS.warningDark} />
+            <Text style={styles.mapErrorText}>
+              Map tiles unavailable — GPS tracking continues normally
+            </Text>
+          </View>
+        ) : null}
       </View>
 
-      {/* Stats */}
-      <View style={styles.statsContainer}>
+      {/* Compact Bottom Telemetry & Controls Panel */}
+      <View style={styles.bottomPanel}>
+        {/* Primary Hero Metric: Distance */}
+        <View style={styles.heroDistanceRow}>
+          <View>
+            <Text style={styles.heroLabel}>DISTANCE</Text>
+            <View style={styles.heroValueRow}>
+              <Text style={styles.heroValue}>
+                {(distance / 1000).toFixed(2)}
+              </Text>
+              <Text style={styles.heroUnit}>KM</Text>
+            </View>
+          </View>
 
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>
-            {(distance / 1000).toFixed(2)}
-          </Text>
+          <View style={styles.secondaryMetricsGroup}>
+            <View style={styles.secondaryMetricBox}>
+              <View style={styles.secondaryMetricHeader}>
+                <AppIcon name="time" size={13} color={COLORS.primary} />
+                <Text style={styles.secondaryLabel}>TIME</Text>
+              </View>
+              <Text style={styles.secondaryValue}>
+                {formatTime(elapsedTime)}
+              </Text>
+            </View>
 
-          <Text style={styles.statLabel}>
-            KM
-          </Text>
+            <View style={styles.secondaryDivider} />
+
+            <View style={styles.secondaryMetricBox}>
+              <View style={styles.secondaryMetricHeader}>
+                <AppIcon name="pace" size={13} color={COLORS.accent} />
+                <Text style={styles.secondaryLabel}>AVG PACE</Text>
+              </View>
+              <Text style={styles.secondaryValue}>{calculatePace()}</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>
-            {formatTime(elapsedTime)}
-          </Text>
+        {isPaused ? (
+          <View style={styles.pausedBanner}>
+            <AppIcon name="pause" size={13} color={COLORS.warningDark} />
+            <Text style={styles.pausedBannerText}>
+              Workout paused • Tap Resume to continue tracking
+            </Text>
+          </View>
+        ) : null}
 
-          <Text style={styles.statLabel}>
-            TIME
-          </Text>
+        {/* Large Touch Controls */}
+        <View style={styles.controls}>
+          <Pressable
+            style={({pressed}) => [
+              styles.controlButton,
+              isPaused ? styles.resumeButton : styles.pauseButton,
+              pressed && styles.controlPressed,
+            ]}
+            onPress={() => {
+              setIsPaused(previous => !previous);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={isPaused ? 'Resume workout' : 'Pause workout'}>
+            <AppIcon
+              name={isPaused ? 'play' : 'pause'}
+              size={18}
+              color={COLORS.textOnPrimary}
+            />
+            <Text style={styles.controlButtonText}>
+              {isPaused ? 'Resume' : 'Pause'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={({pressed}) => [
+              styles.controlButton,
+              styles.finishButton,
+              pressed && styles.controlPressed,
+            ]}
+            onPress={finishWorkout}
+            accessibilityRole="button"
+            accessibilityLabel="Finish workout">
+            <AppIcon name="stop" size={16} color={COLORS.textOnPrimary} />
+            <Text style={styles.controlButtonText}>Finish</Text>
+          </Pressable>
         </View>
-
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>
-            {calculatePace()}
-          </Text>
-
-          <Text style={styles.statLabel}>
-            PACE
-          </Text>
-        </View>
-
-      </View>
-
-      {/* Coordinates */}
-      {currentLocation && (
-        <View style={styles.coordinatesContainer}>
-          <Text style={styles.coordinates}>
-            Lat:{' '}
-            {currentLocation.latitude.toFixed(6)}
-          </Text>
-
-          <Text style={styles.coordinates}>
-            Lon:{' '}
-            {currentLocation.longitude.toFixed(6)}
-          </Text>
-        </View>
-      )}
-
-      {/* Controls */}
-      <View style={styles.controls}>
-
-        <TouchableOpacity
-          style={[
-            styles.pauseButton,
-            isPaused && styles.resumeButton,
-          ]}
-          onPress={() => {
-            setIsPaused(previous => !previous);
-          }}>
-
-          <Text style={styles.buttonText}>
-            {isPaused ? 'Resume' : 'Pause'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.finishButton}
-          onPress={finishWorkout}>
-
-          <Text style={styles.buttonText}>
-            Finish
-          </Text>
-        </TouchableOpacity>
-
       </View>
     </SafeAreaView>
   );
@@ -851,273 +831,349 @@ if (!currentLocation) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.secondary,
   },
-
   header: {
-    height: 65,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eeeeee',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.secondary,
   },
-
-  backButton: {
-    fontSize: 40,
-    color: '#222222',
-    lineHeight: 40,
+  headerBackButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
-    color: '#111111',
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
   },
-
-  subtitle: {
-    fontSize: 12,
-    color: '#777777',
-    textAlign: 'center',
-    marginTop: 2,
+  workoutTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.secondarySoft,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
+    borderRadius: RADII.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(32, 200, 245, 0.25)',
   },
-
+  headerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.textOnPrimary,
+  },
+  headerRight: {
+    alignItems: 'flex-end',
+  },
   mapContainer: {
     flex: 1,
     position: 'relative',
+    backgroundColor: COLORS.surfaceSubtle,
   },
-
   map: {
     flex: 1,
   },
-
-  gpsStatus: {
+  gpsOverlay: {
     position: 'absolute',
-    top: 15,
-    left: 15,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    top: SPACING.sm,
+    left: SPACING.sm,
   },
-
-  gpsStatusText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#222222',
-  },
-
-  accuracyText: {
-    fontSize: 11,
-    color: '#666666',
-    marginTop: 3,
-  },
-
-  statsContainer: {
+  mapStatusPill: {
+    position: 'absolute',
+    top: SPACING.sm,
+    right: SPACING.sm,
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 18,
-    borderTopWidth: 1,
-    borderTopColor: '#eeeeee',
-  },
-
-  statBox: {
     alignItems: 'center',
-    minWidth: 90,
+    gap: 6,
+    backgroundColor: COLORS.overlayLight,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 6,
+    borderRadius: RADII.pill,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111111',
-  },
-
-  statLabel: {
+  mapStatusText: {
     fontSize: 11,
-    color: '#777777',
-    marginTop: 4,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
-
-  coordinatesContainer: {
+  mapErrorBanner: {
+    position: 'absolute',
+    bottom: SPACING.sm,
+    left: SPACING.sm,
+    right: SPACING.sm,
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    backgroundColor: COLORS.warningSoft,
+    borderWidth: 1,
+    borderColor: '#FEDF89',
+    borderRadius: RADII.md,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+  },
+  mapErrorText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.warningDark,
+  },
+  bottomPanel: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: RADII.xl,
+    borderTopRightRadius: RADII.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderSubtle,
+    ...SHADOWS.floating,
+  },
+  heroDistanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
+  },
+  heroLabel: {
+    ...TYPOGRAPHY.overline,
+    color: COLORS.textSecondary,
+    marginBottom: 2,
+  },
+  heroValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 5,
+  },
+  heroValue: {
+    fontSize: 38,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    letterSpacing: -1,
+    fontVariant: ['tabular-nums'],
+  },
+  heroUnit: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  secondaryMetricsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: RADII.md,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderWidth: 1,
+    borderColor: COLORS.borderSubtle,
+    gap: SPACING.sm,
+  },
+  secondaryMetricBox: {
+    alignItems: 'flex-start',
+    minWidth: 74,
+  },
+  secondaryMetricHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+  },
+  secondaryLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    letterSpacing: 0.5,
+  },
+  secondaryValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  secondaryDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: COLORS.border,
+  },
+  pausedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 20,
-    paddingBottom: 10,
+    gap: 6,
+    backgroundColor: COLORS.warningSoft,
+    borderRadius: RADII.sm,
+    paddingVertical: 6,
+    paddingHorizontal: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
-
-  coordinates: {
-    fontSize: 11,
-    color: '#777777',
+  pausedBannerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.warningDark,
   },
-
   controls: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    gap: 12,
+    gap: SPACING.sm,
   },
-
+  controlButton: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: RADII.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+  },
+  controlPressed: {
+    opacity: 0.88,
+    transform: [{scale: 0.98}],
+  },
   pauseButton: {
-    flex: 1,
-    backgroundColor: '#FF9800',
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: 'center',
+    backgroundColor: COLORS.warning,
   },
-
   resumeButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: COLORS.success,
   },
-
   finishButton: {
-    flex: 1,
-    backgroundColor: '#F44336',
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: 'center',
+    backgroundColor: COLORS.error,
   },
-
-  buttonText: {
-    color: '#ffffff',
+  controlButtonText: {
+    color: COLORS.textOnPrimary,
     fontSize: 16,
+    fontWeight: '800',
+  },
+  locationScreen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  locationContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xl,
+  },
+  radarStage: {
+    width: 120,
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.md,
+  },
+  radarRing: {
+    position: 'absolute',
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    backgroundColor: COLORS.primarySoft,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  locationIconContainer: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: COLORS.surface,
+    borderWidth: 2,
+    borderColor: COLORS.primaryMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.card,
+  },
+  locationLoadingTitle: {
+    ...TYPOGRAPHY.titleLarge,
+    textAlign: 'center',
+    color: COLORS.secondary,
+  },
+  locationLoadingText: {
+    ...TYPOGRAPHY.body,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+    maxWidth: 310,
+  },
+  locationTipCard: {
+    width: '100%',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADII.lg,
+    padding: SPACING.md,
+    marginTop: SPACING.xl,
+    borderWidth: 1,
+    borderColor: COLORS.borderSubtle,
+    ...SHADOWS.card,
+  },
+  tipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  tipIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: RADII.sm,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationTipTitle: {
+    fontSize: 14,
     fontWeight: '700',
+    color: COLORS.textPrimary,
   },
-  currentLocationMarker: {
-  width: 32,
-  height: 32,
-  borderRadius: 16,
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-
-locationScreen: {
-  flex: 1,
-  backgroundColor: '#F7F9FC',
-},
-
-locationContent: {
-  flex: 1,
-  justifyContent: 'center',
-  alignItems: 'center',
-  paddingHorizontal: 30,
-},
-
-locationIconContainer: {
-  width: 86,
-  height: 86,
-  borderRadius: 43,
-  backgroundColor: '#E8F2FF',
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginBottom: 24,
-},
-
-locationIcon: {
-  fontSize: 40,
-},
-
-locationSpinner: {
-  marginBottom: 20,
-},
-
-locationLoadingTitle: {
-  fontSize: 26,
-  fontWeight: '800',
-  color: '#111111',
-  textAlign: 'center',
-},
-
-locationLoadingText: {
-  fontSize: 14,
-  lineHeight: 21,
-  color: '#777777',
-  textAlign: 'center',
-  marginTop: 10,
-  maxWidth: 320,
-},
-
-locationTipCard: {
-  width: '100%',
-  backgroundColor: '#FFFFFF',
-  borderRadius: 16,
-  padding: 16,
-  marginTop: 28,
-  borderWidth: 1,
-  borderColor: '#E9EDF3',
-},
-
-locationTipTitle: {
-  fontSize: 14,
-  fontWeight: '700',
-  color: '#222222',
-},
-
-locationTipText: {
-  fontSize: 13,
-  lineHeight: 19,
-  color: '#777777',
-  marginTop: 6,
-},
-
-cancelButton: {
-  marginTop: 22,
-  paddingVertical: 14,
-  paddingHorizontal: 28,
-  borderRadius: 12,
-  backgroundColor: '#EEEEEE',
-},
-
-cancelButtonText: {
-  fontSize: 14,
-  fontWeight: '700',
-  color: '#444444',
-},
-
-locationMarker: {
-  width: 40,
-  height: 40,
-  alignItems: 'center',
-  justifyContent: 'center',
-  position: 'relative',
-},
-
-directionArrow: {
-  position: 'absolute',
-  top: -3,
-  left: 14,
-  width: 0,
-  height: 0,
-  borderLeftWidth: 6,
-  borderRightWidth: 6,
-  borderBottomWidth: 14,
-  borderLeftColor: 'transparent',
-  borderRightColor: 'transparent',
-  borderBottomColor: '#2196F3',
-},
-
-currentLocationDot: {
-  position: 'absolute',
-  top: 11,
-  left: 11,
-  width: 18,
-  height: 18,
-  borderRadius: 9,
-  backgroundColor: '#2196F3',
-  borderWidth: 3,
-  borderColor: '#FFFFFF',
-
-  shadowColor: '#000000',
-  shadowOffset: {
+  locationTipText: {
+    ...TYPOGRAPHY.body,
+    fontSize: 13,
+    marginTop: SPACING.xs,
+  },
+  cancelButton: {
+    marginTop: SPACING.lg,
+    alignSelf: 'stretch',
+  },
+  locationMarker: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  locationHalo: {
+    position: 'absolute',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(22, 119, 255, 0.22)',
+  },
+  directionArrow: {
+    position: 'absolute',
+    top: -2,
+    left: 16,
     width: 0,
-    height: 2,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderBottomWidth: 13,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: COLORS.secondary,
   },
-  shadowOpacity: 0.25,
-  shadowRadius: 3,
-  elevation: 4,
-},
-
+  currentLocationDot: {
+    position: 'absolute',
+    top: 13,
+    left: 13,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: COLORS.primary,
+    borderWidth: 3,
+    borderColor: COLORS.surface,
+    ...SHADOWS.card,
+  },
 });
 
 export default WorkoutScreen;

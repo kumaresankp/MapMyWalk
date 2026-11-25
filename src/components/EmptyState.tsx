@@ -1,0 +1,101 @@
+import React from 'react';
+import {StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
+
+import {COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
+import AppIcon, {AppIconName} from './AppIcon';
+import PrimaryButton from './PrimaryButton';
+
+type EmptyStateProps = {
+  icon?: AppIconName;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onActionPress?: () => void;
+  tone?: 'neutral' | 'error' | 'warning';
+  style?: StyleProp<ViewStyle>;
+};
+
+/**
+ * Polished placeholder card for empty lists, missing data, or recoverable error states.
+ */
+const EmptyState = ({
+  icon = 'distance',
+  title,
+  description,
+  actionLabel,
+  onActionPress,
+  tone = 'neutral',
+  style,
+}: EmptyStateProps) => {
+  const iconBg =
+    tone === 'error'
+      ? COLORS.errorSoft
+      : tone === 'warning'
+      ? COLORS.warningSoft
+      : COLORS.primarySoft;
+
+  const iconColor =
+    tone === 'error'
+      ? COLORS.error
+      : tone === 'warning'
+      ? COLORS.warning
+      : COLORS.primary;
+
+  return (
+    <View style={[styles.container, style]}>
+      <View style={[styles.iconWrap, {backgroundColor: iconBg}]}>
+        <AppIcon name={icon} size={28} color={iconColor} />
+      </View>
+
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.description}>{description}</Text>
+
+      {actionLabel && onActionPress ? (
+        <PrimaryButton
+          label={actionLabel}
+          onPress={onActionPress}
+          style={styles.button}
+        />
+      ) : null}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADII.lg,
+    paddingVertical: SPACING.xl,
+    paddingHorizontal: SPACING.lg,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderSubtle,
+    ...SHADOWS.card,
+  },
+  iconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.md,
+  },
+  title: {
+    ...TYPOGRAPHY.sectionTitle,
+    textAlign: 'center',
+    color: COLORS.textPrimary,
+  },
+  description: {
+    ...TYPOGRAPHY.body,
+    textAlign: 'center',
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+    maxWidth: 280,
+  },
+  button: {
+    marginTop: SPACING.lg,
+    alignSelf: 'stretch',
+  },
+});
+
+export default EmptyState;

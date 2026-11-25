@@ -1,57 +1,81 @@
-import React, {
-  useCallback,
-  useState,
-} from 'react';
-
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
+  ActivityIndicator,
   Alert,
-  SafeAreaView,
-  View,
-  Text,
-  TouchableOpacity,
+  Animated,
+  ScrollView,
+  StatusBar,
   StyleSheet,
+  Text,
+  View,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+
+import {useFocusEffect} from '@react-navigation/native';
 
 import {
-  useFocusEffect,
-} from '@react-navigation/native';
-
-import {
-  StoredWorkout,
-} from '../types/Workout';
-
-import {
-  getWorkouts,
-} from '../services/WorkoutStorage';
+  AppHeader,
+  EmptyState,
+  PrimaryButton,
+  SecondaryButton,
+  SectionHeader,
+  StatCard,
+  WorkoutCard,
+  WorkoutTypeSelector,
+} from '../components';
+import {getWorkouts} from '../services/WorkoutStorage';
+import {useAuth} from '../context/AuthContext';
+import {COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
+import {StoredWorkout} from '../types/Workout';
 
 type Props = {
   navigation: any;
 };
 
-const HomeScreen = ({
-  navigation,
-}: Props) => {
-  const [workoutType, setWorkoutType] =
-    useState<'Walk' | 'Run'>('Walk');
+const HomeScreen = ({navigation}: Props) => {
+  const {user, profile, isGuest} = useAuth();
+  const [workoutType, setWorkoutType] = useState<'Walk' | 'Run'>('Walk');
+  const [workouts, setWorkouts] = useState<StoredWorkout[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [workouts, setWorkouts] =
-    useState<StoredWorkout[]>([]);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(12)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 320,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 320,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
 
   /*
-   * Load workouts whenever Home
-   * becomes visible
+   * Load workouts whenever Home becomes visible
    */
   useFocusEffect(
     useCallback(() => {
-      const loadWorkouts =
-        async () => {
-          const saved =
-            await getWorkouts();
+      let isActive = true;
 
+      const loadWorkouts = async () => {
+        const saved = await getWorkouts();
+        if (isActive) {
           setWorkouts(saved);
-        };
+          setIsLoading(false);
+        }
+      };
 
       loadWorkouts();
+
+      return () => {
+        isActive = false;
+      };
     }, []),
   );
 
@@ -59,41 +83,27 @@ const HomeScreen = ({
    * Today's workouts
    */
   const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
 
-  todayStart.setHours(
-    0,
-    0,
-    0,
-    0,
+  const todayWorkouts = workouts.filter(
+    workout => workout.finishedAt >= todayStart.getTime(),
   );
-
-  const todayWorkouts =
-    workouts.filter(
-      workout =>
-        workout.finishedAt >=
-        todayStart.getTime(),
-    );
 
   /*
    * Today's distance
    */
-  const todayDistance =
-    todayWorkouts.reduce(
-      (total, workout) =>
-        total + workout.distance,
-      0,
-    );
+  const todayDistance = todayWorkouts.reduce(
+    (total, workout) => total + workout.distance,
+    0,
+  );
 
   /*
    * Start workout
    */
   const startWorkout = () => {
-    navigation.navigate(
-      'Workout',
-      {
-        workoutType,
-      },
-    );
+    navigation.navigate('Workout', {
+      workoutType,
+    });
   };
 
   const showPrivacyNotice = () => {
@@ -103,203 +113,141 @@ const HomeScreen = ({
     );
   };
 
+  const profileInitials = (() => {
+    if (isGuest || !user) {
+      return 'GU';
+    }
+    const name =
+      profile?.full_name ||
+      (typeof user.user_metadata?.full_name === 'string'
+        ? user.user_metadata.full_name
+        : '') ||
+      user.email?.split('@')[0] ||
+      'MW';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  })();
+
   return (
-    <SafeAreaView
-      style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          GPS Fitness
-        </Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{translateY: slideAnim}],
+          }}>
+          {/* Brand Header */}
+          <AppHeader
+            variant="brand"
+            rightActionIcon="shield"
+            rightActionLabel="Privacy and Data"
+            onRightActionPress={showPrivacyNotice}
+            profileInitials={profileInitials}
+            onProfilePress={() => navigation.navigate('Profile')}
+          />
 
-        <Text style={styles.subtitle}>
-          Track your walking & running
-        </Text>
-      </View>
+          {/* Workout Launcher Hero */}
+          <View style={styles.launcherCard}>
+            <View style={styles.launcherHeader}>
+              <View style={styles.liveDot} />
+              <Text style={styles.launcherOverline}>READY TO MOVE</Text>
+            </View>
 
-      {/* Workout selection */}
-      <View style={styles.selectionContainer}>
-        <TouchableOpacity
-          style={[
-            styles.typeButton,
-            workoutType === 'Walk' &&
-              styles.selectedTypeButton,
-          ]}
-          onPress={() =>
-            setWorkoutType('Walk')
-          }>
-          <Text
-            style={[
-              styles.typeText,
-              workoutType === 'Walk' &&
-                styles.selectedTypeText,
-            ]}>
-            🚶 Walk
-          </Text>
-        </TouchableOpacity>
+            <Text style={styles.launcherTitle}>Choose Your Activity</Text>
 
-        <TouchableOpacity
-          style={[
-            styles.typeButton,
-            workoutType === 'Run' &&
-              styles.selectedTypeButton,
-          ]}
-          onPress={() =>
-            setWorkoutType('Run')
-          }>
-          <Text
-            style={[
-              styles.typeText,
-              workoutType === 'Run' &&
-                styles.selectedTypeText,
-            ]}>
-            🏃 Run
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <WorkoutTypeSelector
+              value={workoutType}
+              onChange={setWorkoutType}
+            />
 
-      {/* Start */}
-      <TouchableOpacity
-        style={styles.startButton}
-        onPress={startWorkout}>
-        <Text style={styles.startButtonText}>
-          Start {workoutType}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Today's stats */}
-      <View style={styles.statsCard}>
-        <Text style={styles.sectionTitle}>
-          Today's Activity
-        </Text>
-
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>
-              {(
-                todayDistance / 1000
-              ).toFixed(2)}
-            </Text>
-
-            <Text style={styles.statLabel}>
-              KM
-            </Text>
+            <PrimaryButton
+              label={`Start ${workoutType}`}
+              icon="play"
+              onPress={startWorkout}
+              style={styles.startButton}
+            />
           </View>
 
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>
-              {todayWorkouts.length}
-            </Text>
+          {/* Today's Activity */}
+          <View style={styles.section}>
+            <SectionHeader title="Today's Activity" />
 
-            <Text style={styles.statLabel}>
-              WORKOUTS
-            </Text>
+            <View style={styles.statsRow}>
+              <StatCard
+                label="Distance"
+                value={(todayDistance / 1000).toFixed(2)}
+                unit="km"
+                icon="distance"
+                accentColor={COLORS.primary}
+                style={styles.statCard}
+              />
+
+              <StatCard
+                label="Workouts"
+                value={String(todayWorkouts.length)}
+                unit={todayWorkouts.length === 1 ? 'session' : 'sessions'}
+                icon="check"
+                accentColor={COLORS.success}
+                style={styles.statCard}
+              />
+            </View>
           </View>
-        </View>
-      </View>
 
-      <TouchableOpacity
-        style={styles.privacyButton}
-        onPress={showPrivacyNotice}>
-        <Text style={styles.privacyButtonText}>Privacy & Data</Text>
-      </TouchableOpacity>
+          {/* Workout History Navigation */}
+          <SecondaryButton
+            label="View Workout History"
+            icon="history"
+            tone="primary"
+            onPress={() => navigation.navigate('WorkoutHistory')}
+            style={styles.historyButton}
+          />
 
-      <TouchableOpacity
-        style={styles.historyButton}
-        onPress={() => navigation.navigate('WorkoutHistory')}>
-        <Text style={styles.historyButtonText}>View Workout History</Text>
-      </TouchableOpacity>
+          {/* Recent Workouts */}
+          <View style={styles.section}>
+            <SectionHeader
+              title="Recent Workouts"
+              actionLabel={workouts.length > 0 ? 'See all' : undefined}
+              onActionPress={
+                workouts.length > 0
+                  ? () => navigation.navigate('WorkoutHistory')
+                  : undefined
+              }
+            />
 
-      {/* Recent workouts */}
-      <View style={styles.recentContainer}>
-        <View
-          style={styles.recentHeader}>
-          <Text style={styles.sectionTitle}>
-            Recent Workouts
-          </Text>
-
-          <TouchableOpacity onPress={() => navigation.navigate('WorkoutHistory')}>
-            <Text style={styles.historyLink}>See all</Text>
-          </TouchableOpacity>
-        </View>
-
-        {workouts.length === 0 ? (
-          <View
-            style={
-              styles.emptyContainer
-            }>
-            <Text
-              style={styles.emptyTitle}>
-              No workouts yet
-            </Text>
-
-            <Text
-              style={styles.emptyText}>
-              Complete your first workout
-              to see it here.
-            </Text>
+            {isLoading ? (
+              <View style={styles.loadingCard}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+                <Text style={styles.loadingText}>Loading recent workouts…</Text>
+              </View>
+            ) : workouts.length === 0 ? (
+              <EmptyState
+                icon="distance"
+                title="No workouts yet"
+                description="Complete your first walk or run to see your route history and stats here."
+              />
+            ) : (
+              workouts.slice(0, 3).map(workout => (
+                <WorkoutCard
+                  key={workout.id}
+                  workout={workout}
+                  onPress={() =>
+                    navigation.navigate('WorkoutDetail', {
+                      workoutId: workout.id,
+                    })
+                  }
+                />
+              ))
+            )}
           </View>
-        ) : (
-          workouts
-            .slice(0, 3)
-            .map(workout => (
-              <TouchableOpacity
-                key={workout.id}
-                style={styles.workoutCard}
-                onPress={() => navigation.navigate('WorkoutDetail', {workoutId: workout.id})}>
-
-                <View>
-                  <Text
-                    style={
-                      styles.workoutType
-                    }>
-                    {workout.workoutType ===
-                    'Walk'
-                      ? '🚶 Walk'
-                      : '🏃 Run'}
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.workoutDate
-                    }>
-                    {new Date(
-                      workout.finishedAt,
-                    ).toLocaleDateString()}
-                  </Text>
-                </View>
-
-                <View
-                  style={
-                    styles.workoutRight
-                  }>
-                  <Text
-                    style={
-                      styles.workoutDistance
-                    }>
-                    {(
-                      workout.distance /
-                      1000
-                    ).toFixed(2)}{' '}
-                    km
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.workoutTime
-                    }>
-                    {Math.floor(
-                      workout.elapsedTime /
-                        60,
-                    )}{' '}
-                    min
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))
-        )}
-      </View>
+        </Animated.View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -307,214 +255,71 @@ const HomeScreen = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
-    paddingHorizontal: 20,
+    backgroundColor: COLORS.background,
   },
-
-  header: {
-    paddingTop: 25,
-    marginBottom: 25,
+  scrollContent: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.xxl,
   },
-
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#111111',
-  },
-
-  subtitle: {
-    marginTop: 5,
-    fontSize: 14,
-    color: '#777777',
-  },
-
-  selectionContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  typeButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
+  launcherCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADII.xl,
+    padding: SPACING.md,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.borderSubtle,
+    ...SHADOWS.card,
   },
-
-  selectedTypeButton: {
-    backgroundColor: '#2196F3',
-    borderColor: '#2196F3',
-  },
-
-  typeText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#555555',
-  },
-
-  selectedTypeText: {
-    color: '#FFFFFF',
-  },
-
-  startButton: {
-    marginTop: 18,
-    backgroundColor: '#2196F3',
-    paddingVertical: 18,
-    borderRadius: 15,
+  launcherHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    marginBottom: SPACING.xxs,
   },
-
-  startButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '800',
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: COLORS.accent,
   },
-
-  statsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 20,
-    marginTop: 22,
+  launcherOverline: {
+    ...TYPOGRAPHY.overline,
+    color: COLORS.primary,
   },
-
-  sectionTitle: {
+  launcherTitle: {
+    ...TYPOGRAPHY.sectionTitle,
     fontSize: 18,
-    fontWeight: '800',
-    color: '#111111',
+    marginBottom: SPACING.sm,
   },
-
+  startButton: {
+    marginTop: SPACING.md,
+  },
+  section: {
+    marginTop: SPACING.xl,
+  },
   statsRow: {
     flexDirection: 'row',
-    marginTop: 20,
+    gap: SPACING.sm,
   },
-
-  stat: {
+  statCard: {
     flex: 1,
-    alignItems: 'center',
   },
-
-  statValue: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: '#111111',
-  },
-
-  statLabel: {
-    marginTop: 4,
-    fontSize: 11,
-    color: '#888888',
-    fontWeight: '600',
-  },
-
-  recentContainer: {
-    flex: 1,
-    marginTop: 25,
-  },
-
-  recentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-
-  privacyButton: {
-    backgroundColor: '#F4F7FB',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-
-  privacyButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#425466',
-  },
-
   historyButton: {
-    backgroundColor: '#EAF3FF',
-    borderRadius: 12,
-    paddingVertical: 14,
+    marginTop: SPACING.md,
+  },
+  loadingCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADII.lg,
+    padding: SPACING.xl,
     alignItems: 'center',
-    marginTop: 12,
-  },
-
-  historyButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1764D9',
-  },
-
-  historyLink: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1764D9',
-  },
-
-  countText: {
-    fontSize: 13,
-    color: '#777777',
-  },
-
-  emptyContainer: {
-    backgroundColor: '#FFFFFF',
-    padding: 25,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333333',
-  },
-
-  emptyText: {
-    marginTop: 5,
-    fontSize: 13,
-    color: '#888888',
-    textAlign: 'center',
-  },
-
-  workoutCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    padding: 16,
-    marginBottom: 10,
+    justifyContent: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderSubtle,
   },
-
-  workoutType: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#222222',
-  },
-
-  workoutDate: {
-    fontSize: 12,
-    color: '#888888',
-    marginTop: 4,
-  },
-
-  workoutRight: {
-    alignItems: 'flex-end',
-  },
-
-  workoutDistance: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#111111',
-  },
-
-  workoutTime: {
-    fontSize: 12,
-    color: '#888888',
-    marginTop: 3,
+  loadingText: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
   },
 });
 

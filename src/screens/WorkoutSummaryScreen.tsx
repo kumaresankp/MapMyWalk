@@ -1,6 +1,25 @@
-import React from 'react';
-import {SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useEffect, useRef} from 'react';
+import {
+  Animated,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
+import {
+  AppIcon,
+  PrimaryButton,
+  RouteMapPreview,
+  SecondaryButton,
+  SectionHeader,
+  StatCard,
+  StatusIndicator,
+} from '../components';
+import {formatDuration, formatPace} from '../theme/formatters';
+import {COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
 import {GPSPoint} from '../utils/GPSUtils';
 
 type WorkoutSummaryScreenProps = {
@@ -18,90 +37,170 @@ type WorkoutSummaryScreenProps = {
   navigation: any;
 };
 
-const formatTime = (seconds: number) => {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
+const WorkoutSummaryScreen = ({
+  route,
+  navigation,
+}: WorkoutSummaryScreenProps) => {
+  const {
+    workoutType,
+    distance,
+    elapsedTime,
+    gpsPoints,
+    calories,
+    elevationGain,
+    averagePace,
+  } = route.params;
 
-  if (hours > 0) {
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-  }
+  const badgeScale = useRef(new Animated.Value(0.85)).current;
+  const contentFade = useRef(new Animated.Value(0)).current;
 
-  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(badgeScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 18,
+        bounciness: 8,
+      }),
+      Animated.timing(contentFade, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [badgeScale, contentFade]);
 
-const formatPace = (averagePace: number | null | undefined) => {
-  if (!averagePace || averagePace <= 0) {
-    return '—';
-  }
-
-  const totalSeconds = Math.round(averagePace);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-};
-
-const WorkoutSummaryScreen = ({route, navigation}: WorkoutSummaryScreenProps) => {
-  const {workoutType, distance, elapsedTime, gpsPoints, calories, elevationGain, averagePace} = route.params;
+  const paceText = formatPace(averagePace);
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.checkmark}>✓</Text>
-          <Text style={styles.completed}>Workout Completed</Text>
-          <Text style={styles.workoutType}>{workoutType}</Text>
-        </View>
+      <StatusBar barStyle="light-content" />
 
-        <View style={styles.mainStats}>
-          <Text style={styles.distanceValue}>{(distance / 1000).toFixed(2)}</Text>
-          <Text style={styles.distanceLabel}>Kilometers</Text>
-        </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+        {/* Rewarding Navy Hero Card */}
+        <View style={styles.heroCard}>
+          <Animated.View
+            style={[
+              styles.checkCircle,
+              {transform: [{scale: badgeScale}]},
+            ]}>
+            <AppIcon name="check" size={30} color={COLORS.textOnPrimary} />
+          </Animated.View>
 
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{formatTime(elapsedTime)}</Text>
-            <Text style={styles.statLabel}>Time</Text>
-          </View>
+          <StatusIndicator variant="completed" label="Workout Completed" />
 
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{formatPace(averagePace)}</Text>
-            <Text style={styles.statLabel}>Pace /km</Text>
-          </View>
+          <Text style={styles.heroDistance}>
+            {(distance / 1000).toFixed(2)}
+          </Text>
+          <Text style={styles.heroDistanceLabel}>KILOMETERS</Text>
 
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{calories ?? '—'}</Text>
-            <Text style={styles.statLabel}>Calories</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{elevationGain != null ? `${elevationGain} m` : '—'}</Text>
-            <Text style={styles.statLabel}>Elevation</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{gpsPoints.length}</Text>
-            <Text style={styles.statLabel}>GPS points</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{workoutType}</Text>
-            <Text style={styles.statLabel}>Workout</Text>
+          <View style={styles.typePill}>
+            <AppIcon
+              name={workoutType === 'Run' ? 'run' : 'walk'}
+              size={15}
+              color={COLORS.accent}
+            />
+            <Text style={styles.typePillText}>{workoutType} Session</Text>
           </View>
         </View>
 
-        <View style={styles.routeCard}>
-          <Text style={styles.routeTitle}>Route Recorded</Text>
-          <Text style={styles.routeText}>Your GPS path includes {gpsPoints.length} tracked points.</Text>
-          <Text style={styles.routeText}>Calories are estimated and intended for personal fitness tracking.</Text>
-        </View>
+        <Animated.View style={[styles.body, {opacity: contentFade}]}>
+          {/* Recorded Route Preview */}
+          <View style={styles.section}>
+            <SectionHeader title="Recorded Route" />
+            <RouteMapPreview
+              routePoints={gpsPoints}
+              height={210}
+              sourceId="workout-summary-route"
+              layerId="workout-summary-line"
+            />
+          </View>
 
-        <View style={styles.buttons}>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.popToTop()}>
-            <Text style={styles.primaryButtonText}>Back to Home</Text>
-          </TouchableOpacity>
-        </View>
+          {/* Metrics Grid */}
+          <View style={styles.section}>
+            <SectionHeader title="Performance Breakdown" />
+
+            <View style={styles.statsGrid}>
+              <StatCard
+                label="Duration"
+                value={formatDuration(elapsedTime)}
+                icon="time"
+                accentColor={COLORS.primary}
+                style={styles.gridItem}
+              />
+
+              <StatCard
+                label="Avg Pace"
+                value={paceText}
+                unit={paceText !== '—' ? '/km' : undefined}
+                icon="pace"
+                accentColor={COLORS.accent}
+                style={styles.gridItem}
+              />
+
+              <StatCard
+                label="Calories"
+                value={calories != null ? String(calories) : '—'}
+                unit={calories != null ? 'kcal' : undefined}
+                icon="calories"
+                accentColor={COLORS.warning}
+                style={styles.gridItem}
+              />
+
+              <StatCard
+                label="Elevation Gain"
+                value={elevationGain != null ? String(elevationGain) : '—'}
+                unit={elevationGain != null ? 'm' : undefined}
+                icon="elevation"
+                accentColor={COLORS.success}
+                style={styles.gridItem}
+              />
+
+              <StatCard
+                label="GPS Points"
+                value={String(gpsPoints.length)}
+                icon="gps"
+                accentColor={COLORS.primary}
+                style={styles.gridItem}
+              />
+
+              <StatCard
+                label="Activity"
+                value={workoutType}
+                icon={workoutType === 'Run' ? 'run' : 'walk'}
+                accentColor={COLORS.secondary}
+                style={styles.gridItem}
+              />
+            </View>
+          </View>
+
+          {/* Route & Estimate Note */}
+          <View style={styles.noteCard}>
+            <View style={styles.noteRow}>
+              <AppIcon name="pin" size={16} color={COLORS.primary} />
+              <Text style={styles.noteTitle}>Route Recorded</Text>
+            </View>
+            <Text style={styles.noteText}>
+              Your GPS path includes {gpsPoints.length} tracked points. Calories are estimated and intended for personal fitness tracking.
+            </Text>
+          </View>
+
+          {/* Navigation Actions */}
+          <View style={styles.buttons}>
+            <PrimaryButton
+              label="Back to Home"
+              onPress={() => navigation.popToTop()}
+            />
+            <SecondaryButton
+              label="View Workout History"
+              icon="history"
+              tone="primary"
+              onPress={() => navigation.navigate('WorkoutHistory')}
+            />
+          </View>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -110,120 +209,106 @@ const WorkoutSummaryScreen = ({route, navigation}: WorkoutSummaryScreenProps) =>
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: SPACING.xxl,
   },
-  header: {
+  heroCard: {
+    backgroundColor: COLORS.secondary,
+    paddingTop: SPACING.xl,
+    paddingBottom: SPACING.xl,
+    paddingHorizontal: SPACING.lg,
+    borderBottomLeftRadius: RADII.xl,
+    borderBottomRightRadius: RADII.xl,
     alignItems: 'center',
-    paddingTop: 30,
+    ...SHADOWS.floating,
   },
-  checkmark: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#4CAF50',
-    color: '#ffffff',
-    fontSize: 42,
+  checkCircle: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: COLORS.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.md,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  heroDistance: {
+    marginTop: SPACING.md,
+    fontSize: 52,
+    fontWeight: '800',
+    letterSpacing: -1.5,
+    color: COLORS.textOnPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  heroDistanceLabel: {
+    fontSize: 12,
     fontWeight: '700',
-    textAlign: 'center',
-    lineHeight: 70,
+    letterSpacing: 1.4,
+    color: COLORS.primaryMuted,
+    marginTop: 2,
   },
-  completed: {
-    marginTop: 18,
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#111111',
-  },
-  workoutType: {
-    marginTop: 6,
-    fontSize: 16,
-    color: '#777777',
-  },
-  mainStats: {
+  typePill: {
+    marginTop: SPACING.md,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
-    paddingVertical: 25,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    gap: 6,
+    backgroundColor: COLORS.secondarySoft,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
+    borderRadius: RADII.pill,
     borderWidth: 1,
-    borderColor: '#E9EEF5',
+    borderColor: 'rgba(32, 200, 245, 0.25)',
   },
-  distanceValue: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: '#111111',
-  },
-  distanceLabel: {
+  typePillText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#777777',
-    marginTop: 4,
-    textTransform: 'uppercase',
+    fontWeight: '700',
+    color: COLORS.textOnPrimary,
+  },
+  body: {
+    paddingHorizontal: SPACING.lg,
+  },
+  section: {
+    marginTop: SPACING.xl,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginTop: 20,
+    gap: SPACING.sm,
   },
-  statCard: {
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 20,
-    marginBottom: 12,
+  gridItem: {
+    width: '48.2%',
+  },
+  noteCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADII.lg,
+    padding: SPACING.md,
+    marginTop: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.borderSubtle,
+    ...SHADOWS.card,
+  },
+  noteRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E9EEF5',
+    gap: SPACING.xs,
+    marginBottom: 6,
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111111',
+  noteTitle: {
+    ...TYPOGRAPHY.cardTitle,
+    fontSize: 15,
   },
-  statLabel: {
-    fontSize: 11,
-    color: '#777777',
-    marginTop: 6,
-    textTransform: 'uppercase',
-  },
-  routeCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 18,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#E9EEF5',
-  },
-  routeTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111111',
-    marginBottom: 8,
-  },
-  routeText: {
+  noteText: {
+    ...TYPOGRAPHY.body,
     fontSize: 13,
-    color: '#666666',
-    marginTop: 4,
-    lineHeight: 20,
   },
   buttons: {
-    marginTop: 24,
-  },
-  primaryButton: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
+    marginTop: SPACING.xl,
+    gap: SPACING.sm,
   },
 });
 
