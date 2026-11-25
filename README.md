@@ -1,97 +1,161 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# MyWalkMap 🚶‍♀️🗺️
 
-# Getting Started
+**An open-source GPS walking and running tracker for Android.**
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+MyWalkMap helps you record outdoor walks and runs with GPS, view your route on a map, track distance and pace, and review completed workouts.
 
-## Step 1: Start Metro
+> **Status: Beta** — MyWalkMap is under active development. GPS accuracy, background behavior, and battery usage can vary by phone and environment. Please report issues with your device model and Android version.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Features
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+- **Walk and Run workouts** — choose an activity and start recording.
+- **Live GPS tracking** — records the route from accepted device GPS coordinates.
+- **Live route map** — displays the recorded GPS path with MapLibre.
+- **Distance and duration** — calculates distance from GPS points and tracks elapsed workout time.
+- **Pace** — displays the average pace based on recorded distance and elapsed time.
+- **Pause and resume** — temporarily pause recording and continue the same workout.
+- **Current-location indicator** — shows the current GPS position and direction of travel when sufficient points are available.
+- **Workout summary and history** — review completed workouts and saved workout information.
+- **Local workout storage** — workout data is stored on the device in the current version; cloud sync is not included unless a later release explicitly adds it.
+- **Branded launch screen and app icon**.
 
-```sh
-# Using npm
-npm start
+Some capabilities may be experimental in this beta. Check the release notes for the features included in each build.
 
-# OR using Yarn
-yarn start
+## Screenshots
+
+Add screenshots of the current app here, for example:
+
+| Home | Active workout | Workout summary |
+|---|---|---|
+| `docs/screenshots/home.png` | `docs/screenshots/workout.png` | `docs/screenshots/summary.png` |
+
+Replace the paths above with screenshots committed to the repository.
+
+## Download the beta
+
+Download the latest Android APK from the project's **Releases** page:
+
+**[MyWalkMap Releases](../../releases)**
+
+If you share the APK directly, use a clear versioned filename such as `MyWalkMap-v0.1.0-beta.apk` and publish a checksum alongside it where possible.
+
+### Install on Android
+
+1. Download the APK to your Android phone.
+2. Open the APK using your Files app.
+3. If Android asks, allow installs from that specific source.
+4. Review the requested permissions and install.
+5. Open MyWalkMap and grant location permission when prompted.
+
+Only install APKs from a source you trust. Android may show a security warning for apps installed outside an app store.
+
+## Requirements
+
+### For users
+
+- An Android device compatible with the published APK.
+- Location permission for recording workouts.
+- GPS/location services enabled for outdoor tracking.
+- Internet access to load online map styles and tiles.
+
+### For development
+
+- Node.js LTS and npm.
+- A compatible JDK for the project's Gradle/React Native version.
+- Android SDK and the SDK/NDK versions configured in the project.
+- Windows, macOS, or Linux development environment with Android build tooling.
+
+Check the project configuration before upgrading React Native, Gradle, the Android Gradle Plugin, Kotlin, or the NDK.
+
+## Run the app locally
+
+Clone the repository and enter the project directory:
+
+```bash
+git clone <YOUR_REPOSITORY_URL>
+cd <YOUR_REPOSITORY_DIRECTORY>
+npm install
 ```
 
-## Step 2: Build and run your app
+Connect an Android device with USB debugging enabled or start an Android emulator, then run:
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
+```bash
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
+The exact setup can depend on the React Native and Android toolchain versions pinned in this repository.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## Build a release APK
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+On Windows, from the repository root:
 
-```sh
-bundle install
+```bat
+cd android
+gradlew clean
+gradlew assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a
 ```
 
-Then, and every time you update your native dependencies, run:
+The output is normally located at:
 
-```sh
-bundle exec pod install
+```text
+android/app/build/outputs/apk/release/app-release.apk
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+Keep the release keystore and its passwords private. **Never commit a `.keystore`, `.jks`, or signing-password file to source control.** All future updates distributed as the same Android app must use the appropriate consistent signing identity.
 
-```sh
-# Using npm
-npm run ios
+Before publishing a release, verify the APK signature, supported device ABIs, native-library page-size compatibility, and behavior on real devices.
 
-# OR using Yarn
-yarn ios
-```
+## Maps and GPS data
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+MyWalkMap uses **MapLibre Native** to render the map and the configured OpenFreeMap style, which uses OpenStreetMap-based map data. The drawn workout path comes from the GPS points recorded by the device; it is not a route generated by a navigation or directions engine.
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+Map styles and tiles are online services and may be subject to their provider's availability, usage policies, and attribution requirements. Keep map attribution visible in the app.
 
-## Step 3: Modify your app
+## Privacy
 
-Now that you have successfully run the app, let's make changes!
+MyWalkMap needs location access to record a workout and draw the route. In the current local-storage design, completed workout data is stored on the device and is not intentionally uploaded to a MyWalkMap cloud service.
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+The map renderer retrieves its style and map tiles from the configured map provider, so network requests to that provider occur when the map loads. Review the app's permissions and the project's privacy documentation before using it with sensitive location data.
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+A public release should link to a dedicated privacy policy that clearly explains location processing, local retention, map-provider requests, data deletion, and any future network or analytics features.
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+## Beta feedback
 
-## Congratulations! :tada:
+Please report bugs and suggestions through the repository's **Issues** page. Include:
 
-You've successfully run and modified your React Native App. :partying_face:
+- MyWalkMap version
+- Phone model and Android version
+- What you were doing when the issue occurred
+- Expected and actual behavior
+- Screenshots or logs, after removing personal location information
 
-### Now what?
+Do not post home addresses, private GPS routes, signing keys, passwords, or other sensitive information in public issues.
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+## Roadmap
 
-# Troubleshooting
+Potential next steps include:
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+- Further testing and hardening of background GPS tracking.
+- Better handling of GPS loss, poor accuracy, and device-specific battery restrictions.
+- Continued validation of workout history and saved-route details.
+- More thorough testing of calorie and elevation estimates, where available.
+- Release hardening, accessibility improvements, and additional device testing.
 
-# Learn More
+See the repository's Issues and release notes for current progress. Do not assume a roadmap item is available until it is documented in a release.
 
-To learn more about React Native, take a look at the following resources:
+## Contributing
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Contributions, bug reports, documentation improvements, and testing feedback are welcome.
+
+1. Open an issue to discuss a substantial change.
+2. Create a branch for your change.
+3. Keep changes focused and avoid committing secrets or personal GPS data.
+4. Test the app on an emulator or Android device before opening a pull request.
+
+## License
+
+MyWalkMap is intended to be open source under the **MIT License**. See [`LICENSE`](LICENSE). If you choose a different license for the repository, update this section and the license file together.
+
+---
+
+**MyWalkMap — Walk. Run. Track your path.**
