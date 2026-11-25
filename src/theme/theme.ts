@@ -1,48 +1,54 @@
 import {Platform, TextStyle, ViewStyle} from 'react-native';
 
 export const COLORS = {
-  // Brand Palette
-  primary: '#1677FF',
-  primaryDark: '#0D5BD9',
-  primarySoft: '#EAF3FF',
-  primaryMuted: '#C7DFFF',
+  // Reference Dark Obsidian + Electric Lime + Emerald Palette
+  primary: '#B4FF2A', // Electric Lime (Primary CTA, active pills, highlights)
+  primaryDark: '#8EE014',
+  primarySoft: 'rgba(180, 255, 42, 0.14)',
+  primaryMuted: 'rgba(180, 255, 42, 0.35)',
 
-  secondary: '#071B3A',
-  secondarySoft: '#0F2B57',
+  secondary: '#183D24', // Deep Forest Emerald glow
+  secondarySoft: '#122619',
 
-  accent: '#20C8F5',
-  accentSoft: '#E5F9FF',
+  accent: '#2EE66E', // Vibrant Emerald Mint
+  accentSoft: 'rgba(46, 230, 110, 0.14)',
 
-  // Surfaces
-  background: '#F7F9FC',
-  surface: '#FFFFFF',
-  surfaceSubtle: '#F1F5F9',
-  overlayLight: 'rgba(255, 255, 255, 0.94)',
-  overlayDark: 'rgba(7, 27, 58, 0.88)',
+  coral: '#FF6B35', // Warm Athletic Coral/Orange (Run & Calories accent)
+  coralSoft: 'rgba(255, 107, 53, 0.16)',
+
+  mapRoute: '#1677FF', // High-contrast route line over light OpenFreeMap tiles
+
+  // Dark Surfaces
+  background: '#0A0C0B', // Deep Obsidian
+  surface: '#151817', // Elevated Dark Charcoal Card
+  surfaceElevated: '#1C201E', // Nested Dark Pill / Input Surface
+  surfaceSubtle: '#111413',
+  overlayLight: 'rgba(18, 21, 20, 0.92)',
+  overlayDark: 'rgba(10, 12, 11, 0.94)',
 
   // Text
-  textPrimary: '#101828',
-  textSecondary: '#667085',
-  textMuted: '#98A2B3',
-  textOnPrimary: '#FFFFFF',
-  textOnDark: '#F8FAFC',
+  textPrimary: '#F8FAF9',
+  textSecondary: '#949B97',
+  textMuted: '#68706C',
+  textOnPrimary: '#0A0C0B', // High-contrast dark text on Electric Lime
+  textOnDark: '#F8FAF9',
 
   // Borders
-  border: '#E4E9F2',
-  borderSubtle: '#EEF2F7',
+  border: '#262B28',
+  borderSubtle: '#1E2320',
 
   // Semantic Status
-  success: '#12B76A',
-  successSoft: '#ECFDF3',
-  successDark: '#027A48',
+  success: '#2EE66E',
+  successSoft: 'rgba(46, 230, 110, 0.15)',
+  successDark: '#6BF29B',
 
-  warning: '#F79009',
-  warningSoft: '#FFFAEB',
-  warningDark: '#B54708',
+  warning: '#FFB020',
+  warningSoft: 'rgba(255, 176, 32, 0.15)',
+  warningDark: '#FFD166',
 
-  error: '#F04438',
-  errorSoft: '#FEF3F2',
-  errorDark: '#B42318',
+  error: '#FF4D4F',
+  errorSoft: 'rgba(255, 77, 79, 0.15)',
+  errorDark: '#FF8587',
 } as const;
 
 export const SPACING = {
@@ -56,11 +62,11 @@ export const SPACING = {
 } as const;
 
 export const RADII = {
-  xs: 6,
-  sm: 10,
-  md: 14,
-  lg: 18,
-  xl: 24,
+  xs: 8,
+  sm: 12,
+  md: 16,
+  lg: 20,
+  xl: 26,
   pill: 999,
 } as const;
 
@@ -133,24 +139,24 @@ export const SHADOWS: Record<'none' | 'card' | 'floating' | 'button', ViewStyle>
   none: {},
   card: Platform.select({
     android: {
-      elevation: 2,
+      elevation: 3,
     },
     default: {
-      shadowColor: '#071B3A',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
+      shadowColor: '#000000',
+      shadowOffset: {width: 0, height: 4},
+      shadowOpacity: 0.28,
+      shadowRadius: 10,
     },
   }) as ViewStyle,
   floating: Platform.select({
     android: {
-      elevation: 6,
+      elevation: 8,
     },
     default: {
-      shadowColor: '#071B3A',
-      shadowOffset: {width: 0, height: 6},
-      shadowOpacity: 0.12,
-      shadowRadius: 14,
+      shadowColor: '#000000',
+      shadowOffset: {width: 0, height: 8},
+      shadowOpacity: 0.4,
+      shadowRadius: 16,
     },
   }) as ViewStyle,
   button: Platform.select({
@@ -158,10 +164,10 @@ export const SHADOWS: Record<'none' | 'card' | 'floating' | 'button', ViewStyle>
       elevation: 4,
     },
     default: {
-      shadowColor: '#1677FF',
+      shadowColor: '#B4FF2A',
       shadowOffset: {width: 0, height: 4},
-      shadowOpacity: 0.25,
-      shadowRadius: 10,
+      shadowOpacity: 0.22,
+      shadowRadius: 12,
     },
   }) as ViewStyle,
 };

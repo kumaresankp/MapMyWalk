@@ -21,7 +21,7 @@ type PrimaryButtonProps = {
 };
 
 /**
- * High-emphasis action button with subtle scale-on-press micro-interaction.
+ * High-emphasis pill action button with Electric Lime primary fill and dark high-contrast label.
  */
 const PrimaryButton = ({
   label,
@@ -42,14 +42,17 @@ const PrimaryButton = ({
     }).start();
   };
 
+  const isLightText = variant === 'danger' || variant === 'navy';
   const bgColor =
     variant === 'danger'
       ? COLORS.error
       : variant === 'success'
-      ? COLORS.success
+      ? COLORS.accent
       : variant === 'navy'
-      ? COLORS.secondary
+      ? COLORS.surfaceElevated
       : COLORS.primary;
+
+  const textColor = isLightText ? COLORS.textPrimary : COLORS.textOnPrimary;
 
   return (
     <Animated.View style={[{transform: [{scale}]}, style]}>
@@ -63,13 +66,12 @@ const PrimaryButton = ({
         style={({pressed}) => [
           styles.button,
           {backgroundColor: bgColor},
+          variant === 'navy' && styles.navyBorder,
           pressed && styles.pressed,
           disabled && styles.disabled,
         ]}>
-        {icon ? (
-          <AppIcon name={icon} size={18} color={COLORS.textOnPrimary} />
-        ) : null}
-        <Text style={styles.label}>{label}</Text>
+        {icon ? <AppIcon name={icon} size={18} color={textColor} /> : null}
+        <Text style={[styles.label, {color: textColor}]}>{label}</Text>
       </Pressable>
     </Animated.View>
   );
@@ -78,7 +80,7 @@ const PrimaryButton = ({
 const styles = StyleSheet.create({
   button: {
     minHeight: 54,
-    borderRadius: RADII.md,
+    borderRadius: RADII.pill,
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
     flexDirection: 'row',
@@ -87,14 +89,17 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
     ...SHADOWS.button,
   },
+  navyBorder: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
   pressed: {
-    opacity: 0.92,
+    opacity: 0.9,
   },
   disabled: {
-    opacity: 0.5,
+    opacity: 0.45,
   },
   label: {
-    color: COLORS.textOnPrimary,
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.2,

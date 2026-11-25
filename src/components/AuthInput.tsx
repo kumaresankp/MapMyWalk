@@ -17,7 +17,7 @@ type AuthInputProps = TextInputProps & {
 };
 
 /**
- * Reusable form field with consistent MyWalkMap styling, password toggle, and error state.
+ * Reusable dark form field with Electric Lime focus ring, password toggle, and error state.
  */
 const AuthInput = ({
   label,
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textPrimary,
+    color: COLORS.textSecondary,
     marginBottom: 6,
   },
   inputContainer: {
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.border,
     paddingHorizontal: SPACING.md,
-    minHeight: 50,
+    minHeight: 52,
   },
   inputFocused: {
     borderColor: COLORS.primary,

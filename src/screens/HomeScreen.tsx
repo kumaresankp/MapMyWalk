@@ -1,8 +1,9 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
   Animated,
+  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -15,6 +16,7 @@ import {useFocusEffect} from '@react-navigation/native';
 
 import {
   AppHeader,
+  AppIcon,
   EmptyState,
   PrimaryButton,
   SecondaryButton,
@@ -23,14 +25,16 @@ import {
   WorkoutCard,
   WorkoutTypeSelector,
 } from '../components';
-import {getWorkouts} from '../services/WorkoutStorage';
 import {useAuth} from '../context/AuthContext';
+import {getWorkouts} from '../services/WorkoutStorage';
 import {COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
 import {StoredWorkout} from '../types/Workout';
 
 type Props = {
   navigation: any;
 };
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const HomeScreen = ({navigation}: Props) => {
   const {user, profile, isGuest} = useAuth();
@@ -98,6 +102,34 @@ const HomeScreen = ({navigation}: Props) => {
   );
 
   /*
+   * Current week's 7-day strip derived strictly from real local workouts
+   */
+  const weekDays = useMemo(() => {
+    const now = new Date();
+    const todayIndex = now.getDay();
+    const sunday = new Date(now);
+    sunday.setHours(0, 0, 0, 0);
+    sunday.setDate(now.getDate() - todayIndex);
+
+    return DAY_LABELS.map((label, idx) => {
+      const dateObj = new Date(sunday);
+      dateObj.setDate(sunday.getDate() + idx);
+      const dayStart = dateObj.getTime();
+      const dayEnd = dayStart + 86400000;
+      const hasWorkout = workouts.some(
+        w => w.finishedAt >= dayStart && w.finishedAt < dayEnd,
+      );
+
+      return {
+        label,
+        dateNum: dateObj.getDate(),
+        isToday: idx === todayIndex,
+        hasWorkout,
+      };
+    });
+  }, [workouts]);
+
+  /*
    * Start workout
    */
   const startWorkout = () => {
@@ -113,27 +145,37 @@ const HomeScreen = ({navigation}: Props) => {
     );
   };
 
+  const displayName =
+    profile?.full_name ||
+    (typeof user?.user_metadata?.full_name === 'string'
+      ? user.user_metadata.full_name
+      : '') ||
+    user?.email?.split('@')[0] ||
+    '';
+
   const profileInitials = (() => {
     if (isGuest || !user) {
       return 'GU';
     }
-    const name =
-      profile?.full_name ||
-      (typeof user.user_metadata?.full_name === 'string'
-        ? user.user_metadata.full_name
-        : '') ||
-      user.email?.split('@')[0] ||
-      'MW';
-    const parts = name.trim().split(/\s+/).filter(Boolean);
+    const source = displayName || 'MW';
+    const parts = source.trim().split(/\s+/).filter(Boolean);
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     }
-    return name.slice(0, 2).toUpperCase();
+    return source.slice(0, 2).toUpperCase();
   })();
+
+  const greetingText =
+    !isGuest && displayName
+      ? `Hello, ${displayName.split(' ')[0]}`
+      : 'MyWalkMap';
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
+
+      {/* Subtle top emerald ambient glow matching reference */}
+      <View style={styles.ambientGlow} pointerEvents="none" />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -143,9 +185,12 @@ const HomeScreen = ({navigation}: Props) => {
             opacity: fadeAnim,
             transform: [{translateY: slideAnim}],
           }}>
-          {/* Brand Header */}
+          {/* Greeting / Brand Header */}
           <AppHeader
             variant="brand"
+            greeting={greetingText}
+            subtitle="Every Step Has a Story."
+            avatarUrl={profile?.avatar_url}
             rightActionIcon="shield"
             rightActionLabel="Privacy and Data"
             onRightActionPress={showPrivacyNotice}
@@ -153,15 +198,72 @@ const HomeScreen = ({navigation}: Props) => {
             onProfilePress={() => navigation.navigate('Profile')}
           />
 
-          {/* Workout Launcher Hero */}
-          <View style={styles.launcherCard}>
-            <View style={styles.launcherHeader}>
-              <View style={styles.liveDot} />
-              <Text style={styles.launcherOverline}>READY TO MOVE</Text>
+          {/* Glowing Emerald Hero Banner */}
+          <View style={styles.heroBanner}>
+            <View style={styles.heroBannerLeft}>
+              <View style={styles.heroBadgeCircle}>
+                <AppIcon
+                  name={workoutType === 'Run' ? 'run' : 'walk'}
+                  size={22}
+                  color={COLORS.primary}
+                />
+              </View>
+              <View style={styles.heroBannerText}>
+                <Text style={styles.heroBannerTitle}>MyWalkMap</Text>
+                <Text style={styles.heroBannerSubtitle}>
+                  Ready for your {workoutType.toLowerCase()}
+                </Text>
+              </View>
             </View>
 
-            <Text style={styles.launcherTitle}>Choose Your Activity</Text>
+            <Pressable
+              onPress={startWorkout}
+              style={({pressed}) => [
+                styles.heroStartPill,
+                pressed && styles.heroStartPillPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`Quick Start ${workoutType}`}>
+              <Text style={styles.heroStartPillText}>START</Text>
+            </Pressable>
+          </View>
 
+          {/* 7-Day Activity Strip */}
+          <View style={styles.weekRow}>
+            {weekDays.map(day => (
+              <View key={day.label} style={styles.weekDayCol}>
+                <Text
+                  style={[
+                    styles.weekDayLabel,
+                    day.isToday && styles.weekDayLabelToday,
+                  ]}>
+                  {day.label}
+                </Text>
+                <View
+                  style={[
+                    styles.weekDateCircle,
+                    day.isToday && styles.weekDateCircleToday,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.weekDateNum,
+                      day.isToday && styles.weekDateNumToday,
+                    ]}>
+                    {day.dateNum}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.weekWorkoutDot,
+                    day.hasWorkout && styles.weekWorkoutDotActive,
+                  ]}
+                />
+              </View>
+            ))}
+          </View>
+
+          {/* Activity Selector & Primary Start */}
+          <View style={styles.launcherCard}>
             <WorkoutTypeSelector
               value={workoutType}
               onChange={setWorkoutType}
@@ -194,7 +296,7 @@ const HomeScreen = ({navigation}: Props) => {
                 value={String(todayWorkouts.length)}
                 unit={todayWorkouts.length === 1 ? 'session' : 'sessions'}
                 icon="check"
-                accentColor={COLORS.success}
+                accentColor={COLORS.accent}
                 style={styles.statCard}
               />
             </View>
@@ -204,15 +306,15 @@ const HomeScreen = ({navigation}: Props) => {
           <SecondaryButton
             label="View Workout History"
             icon="history"
-            tone="primary"
+            tone="neutral"
             onPress={() => navigation.navigate('WorkoutHistory')}
             style={styles.historyButton}
           />
 
-          {/* Recent Workouts */}
+          {/* Recent Activity */}
           <View style={styles.section}>
             <SectionHeader
-              title="Recent Workouts"
+              title="Recent Activity"
               actionLabel={workouts.length > 0 ? 'See all' : undefined}
               onActionPress={
                 workouts.length > 0
@@ -257,38 +359,136 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  ambientGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 220,
+    backgroundColor: COLORS.secondarySoft,
+    opacity: 0.75,
+    borderBottomLeftRadius: 48,
+    borderBottomRightRadius: 48,
+  },
   scrollContent: {
     paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.xxl,
+  },
+  heroBanner: {
+    backgroundColor: '#1E7E3D',
+    borderRadius: RADII.xl,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(180, 255, 42, 0.35)',
+    ...SHADOWS.floating,
+  },
+  heroBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    flex: 1,
+  },
+  heroBadgeCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroBannerText: {
+    flex: 1,
+  },
+  heroBannerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  heroBannerSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(248, 250, 249, 0.85)',
+    marginTop: 2,
+  },
+  heroStartPill: {
+    backgroundColor: COLORS.textPrimary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 10,
+    borderRadius: RADII.pill,
+  },
+  heroStartPillPressed: {
+    opacity: 0.85,
+  },
+  heroStartPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textOnPrimary,
+    letterSpacing: 0.6,
+  },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.md,
+    paddingHorizontal: 2,
+  },
+  weekDayCol: {
+    alignItems: 'center',
+    gap: 5,
+  },
+  weekDayLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  weekDayLabelToday: {
+    color: COLORS.primary,
+    fontWeight: '800',
+  },
+  weekDateCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  weekDateCircleToday: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primarySoft,
+  },
+  weekDateNum: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  weekDateNumToday: {
+    color: COLORS.primary,
+    fontWeight: '800',
+  },
+  weekWorkoutDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: 'transparent',
+  },
+  weekWorkoutDotActive: {
+    backgroundColor: COLORS.accent,
   },
   launcherCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADII.xl,
     padding: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     ...SHADOWS.card,
-  },
-  launcherHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: SPACING.xxs,
-  },
-  liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: COLORS.accent,
-  },
-  launcherOverline: {
-    ...TYPOGRAPHY.overline,
-    color: COLORS.primary,
-  },
-  launcherTitle: {
-    ...TYPOGRAPHY.sectionTitle,
-    fontSize: 18,
-    marginBottom: SPACING.sm,
   },
   startButton: {
     marginTop: SPACING.md,
@@ -315,7 +515,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: SPACING.sm,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
   },
   loadingText: {
     ...TYPOGRAPHY.body,

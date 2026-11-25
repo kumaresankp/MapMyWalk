@@ -77,7 +77,7 @@ const WorkoutHistoryScreen = ({navigation}: Props) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       <AppHeader
         title="Workout History"
@@ -212,17 +212,17 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRadius: RADII.pill,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     marginBottom: SPACING.md,
   },
   filterPill: {
     flex: 1,
-    paddingVertical: 9,
+    paddingVertical: 10,
     borderRadius: RADII.pill,
     alignItems: 'center',
   },
   filterPillActive: {
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.primary,
   },
   filterText: {
     fontSize: 13,
@@ -231,15 +231,18 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: COLORS.textOnPrimary,
+    fontWeight: '800',
   },
   summaryStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.surface,
     borderRadius: RADII.lg,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.sm,
     marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     ...SHADOWS.card,
   },
   summaryCell: {
@@ -249,13 +252,13 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 16,
     fontWeight: '800',
-    color: COLORS.textOnPrimary,
+    color: COLORS.primary,
     fontVariant: ['tabular-nums'],
   },
   summaryLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: COLORS.primaryMuted,
+    color: COLORS.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
     marginTop: 3,
@@ -263,7 +266,7 @@ const styles = StyleSheet.create({
   summaryDivider: {
     width: 1,
     height: 28,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: COLORS.border,
   },
 });
 

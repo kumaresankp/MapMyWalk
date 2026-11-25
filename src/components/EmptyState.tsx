@@ -16,7 +16,7 @@ type EmptyStateProps = {
 };
 
 /**
- * Polished placeholder card for empty lists, missing data, or recoverable error states.
+ * Polished dark placeholder card for empty lists, missing data, or recoverable error states.
  */
 const EmptyState = ({
   icon = 'distance',
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     ...SHADOWS.card,
   },
   iconWrap: {

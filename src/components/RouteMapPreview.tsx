@@ -22,7 +22,7 @@ type RouteMapPreviewProps = {
 };
 
 /**
- * Displays a recorded GPS route on MapLibre with start/finish markers and loading/error overlays.
+ * Displays a recorded GPS route on MapLibre with start/finish markers and dark-themed overlays.
  */
 const RouteMapPreview = ({
   routePoints,
@@ -113,7 +113,7 @@ const RouteMapPreview = ({
               id={layerId}
               type="line"
               paint={{
-                'line-color': COLORS.primary,
+                'line-color': COLORS.mapRoute,
                 'line-width': 5,
                 'line-opacity': 0.94,
               }}
@@ -140,10 +140,10 @@ const RouteMapPreview = ({
         )}
       </Map>
 
-      {/* Legend badge */}
+      {/* Dark Legend Pill */}
       <View style={styles.legendPill}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, {backgroundColor: COLORS.success}]} />
+          <View style={[styles.legendDot, {backgroundColor: COLORS.accent}]} />
           <Text style={styles.legendText}>Start</Text>
         </View>
         <View style={styles.legendDivider} />
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   mapWrapper: {
     borderRadius: RADII.lg,
     overflow: 'hidden',
-    backgroundColor: COLORS.surfaceSubtle,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     position: 'relative',
@@ -189,9 +189,9 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: COLORS.success,
+    backgroundColor: COLORS.accent,
     borderWidth: 3,
-    borderColor: COLORS.surface,
+    borderColor: COLORS.background,
   },
   finishMarker: {
     width: 18,
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: COLORS.error,
     borderWidth: 3,
-    borderColor: COLORS.surface,
+    borderColor: COLORS.background,
   },
   legendPill: {
     position: 'absolute',
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   },
   errorOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(247, 249, 252, 0.94)',
+    backgroundColor: COLORS.overlayDark,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.lg,
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     borderRadius: RADII.lg,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.lg,

@@ -15,18 +15,21 @@ const OPTIONS: {
   title: string;
   subtitle: string;
   icon: 'walk' | 'run';
+  accent: string;
 }[] = [
   {
     type: 'Walk',
     title: 'Walk',
     subtitle: 'Steady outdoor pace',
     icon: 'walk',
+    accent: COLORS.primary,
   },
   {
     type: 'Run',
     title: 'Run',
     subtitle: 'High-tempo cardio',
     icon: 'run',
+    accent: COLORS.coral,
   },
 ];
 
@@ -48,6 +51,8 @@ const TypeCard = ({option, selected, onSelect}: TypeCardProps) => {
     }).start();
   };
 
+  const activeColor = option.accent;
+
   return (
     <Animated.View style={[styles.cardWrapper, {transform: [{scale}]}]}>
       <Pressable
@@ -59,41 +64,43 @@ const TypeCard = ({option, selected, onSelect}: TypeCardProps) => {
         accessibilityLabel={`${option.title} workout`}
         style={[
           styles.card,
-          selected ? styles.cardSelected : styles.cardUnselected,
+          selected
+            ? [styles.cardSelected, {borderColor: activeColor}]
+            : styles.cardUnselected,
         ]}>
         <View style={styles.cardTopRow}>
           <View
             style={[
               styles.iconCircle,
-              selected ? styles.iconCircleSelected : styles.iconCircleUnselected,
+              selected
+                ? {backgroundColor: activeColor}
+                : styles.iconCircleUnselected,
             ]}>
             <AppIcon
               name={option.icon}
-              size={22}
-              color={selected ? COLORS.textOnPrimary : COLORS.primary}
+              size={20}
+              color={selected ? COLORS.textOnPrimary : COLORS.textPrimary}
             />
           </View>
 
           <View
             style={[
               styles.radioOuter,
-              selected ? styles.radioOuterSelected : styles.radioOuterUnselected,
+              selected
+                ? {backgroundColor: activeColor, borderColor: activeColor}
+                : styles.radioOuterUnselected,
             ]}>
-            {selected ? <AppIcon name="check" size={11} color={COLORS.secondary} /> : null}
+            {selected ? (
+              <AppIcon name="check" size={11} color={COLORS.textOnPrimary} />
+            ) : null}
           </View>
         </View>
 
-        <Text
-          style={[
-            styles.cardTitle,
-            selected && styles.cardTitleSelected,
-          ]}>
-          {option.title}
-        </Text>
+        <Text style={styles.cardTitle}>{option.title}</Text>
         <Text
           style={[
             styles.cardSubtitle,
-            selected && styles.cardSubtitleSelected,
+            selected && {color: COLORS.textPrimary},
           ]}
           numberOfLines={1}>
           {option.subtitle}
@@ -104,7 +111,7 @@ const TypeCard = ({option, selected, onSelect}: TypeCardProps) => {
 };
 
 /**
- * Dual athletic card selector for choosing between Walk and Run.
+ * Reference-inspired dark pill-card selector for Walk and Run.
  */
 const WorkoutTypeSelector = ({value, onChange}: WorkoutTypeSelectorProps) => {
   return (
@@ -133,13 +140,12 @@ const styles = StyleSheet.create({
     borderRadius: RADII.lg,
     padding: SPACING.md,
     borderWidth: 1.5,
-    minHeight: 118,
+    minHeight: 112,
     justifyContent: 'space-between',
     ...SHADOWS.card,
   },
   cardSelected: {
-    backgroundColor: COLORS.secondary,
-    borderColor: COLORS.primary,
+    backgroundColor: COLORS.surfaceElevated,
   },
   cardUnselected: {
     backgroundColor: COLORS.surface,
@@ -152,17 +158,16 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   iconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: RADII.md,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconCircleSelected: {
-    backgroundColor: COLORS.primary,
-  },
   iconCircleUnselected: {
-    backgroundColor: COLORS.primarySoft,
+    backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   radioOuter: {
     width: 22,
@@ -170,30 +175,21 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  radioOuterSelected: {
-    backgroundColor: COLORS.accent,
+    borderWidth: 1.5,
   },
   radioOuterUnselected: {
-    borderWidth: 1.5,
     borderColor: COLORS.border,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: COLORS.textPrimary,
-  },
-  cardTitleSelected: {
-    color: COLORS.textOnPrimary,
   },
   cardSubtitle: {
     fontSize: 12,
     fontWeight: '500',
     color: COLORS.textSecondary,
     marginTop: 2,
-  },
-  cardSubtitleSelected: {
-    color: COLORS.primaryMuted,
   },
 });
 

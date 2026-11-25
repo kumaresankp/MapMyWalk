@@ -54,7 +54,7 @@ const ForgotPasswordScreen = ({navigation}: Props) => {
   if (sent) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="light-content" />
         <AppHeader
           title="Reset Password"
           onBackPress={() => navigation.goBack()}
@@ -74,7 +74,7 @@ const ForgotPasswordScreen = ({navigation}: Props) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       <AppHeader
         title="Reset Password"
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     ...TYPOGRAPHY.titleLarge,
-    color: COLORS.secondary,
+    color: COLORS.textPrimary,
   },
   subheading: {
     ...TYPOGRAPHY.body,
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
     backgroundColor: COLORS.errorSoft,
     borderWidth: 1,
-    borderColor: '#FECDCA',
+    borderColor: 'rgba(255, 77, 79, 0.35)',
     borderRadius: RADII.md,
     padding: SPACING.sm,
     marginBottom: SPACING.md,

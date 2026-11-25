@@ -7,11 +7,14 @@ import {
   View,
 } from 'react-native';
 
-import {COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
+import {COLORS, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
 import AppIcon, {AppIconName} from './AppIcon';
 
 type BrandHeaderProps = {
   variant: 'brand';
+  greeting?: string;
+  subtitle?: string;
+  avatarUrl?: string | null;
   rightActionIcon?: AppIconName;
   rightActionLabel?: string;
   onRightActionPress?: () => void;
@@ -31,38 +34,55 @@ type NavHeaderProps = {
 type AppHeaderProps = BrandHeaderProps | NavHeaderProps;
 
 /**
- * Unified top header supporting both the Home brand banner and sub-screen navigation bars.
+ * Reference-inspired dark header with greeting/avatar on Home and circular back/action pills on sub-screens.
  */
 const AppHeader = (props: AppHeaderProps) => {
   if (props.variant === 'brand') {
+    const initials = props.profileInitials || 'MW';
     return (
       <View style={styles.brandContainer}>
-        <View style={styles.brandLeft}>
-          <View style={styles.logoFrame}>
-            <Image
-              source={require('../../assets/logo 512x512.png')}
-              style={styles.logoImage}
-              resizeMode="cover"
-            />
+        <TouchableOpacity
+          onPress={props.onProfilePress}
+          style={styles.brandLeft}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Open Profile">
+          <View style={styles.avatarRing}>
+            {props.avatarUrl ? (
+              <Image
+                source={{uri: props.avatarUrl}}
+                style={styles.avatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.avatarFallback}>
+                <Text style={styles.avatarInitials}>{initials}</Text>
+              </View>
+            )}
           </View>
+
           <View style={styles.brandTextGroup}>
-            <Text style={styles.brandName}>MyWalkMap</Text>
-            <Text style={styles.tagline}>Every Step Has a Story.</Text>
+            <Text style={styles.greetingTitle} numberOfLines={1}>
+              {props.greeting || 'MyWalkMap'}
+            </Text>
+            <Text style={styles.tagline} numberOfLines={1}>
+              {props.subtitle || 'Every Step Has a Story.'}
+            </Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.brandRightActions}>
           {props.onRightActionPress && (
             <TouchableOpacity
               onPress={props.onRightActionPress}
-              style={styles.brandActionButton}
+              style={styles.circleActionButton}
               activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityLabel={props.rightActionLabel ?? 'Privacy and Data'}>
               <AppIcon
                 name={props.rightActionIcon ?? 'shield'}
                 size={18}
-                color={COLORS.secondary}
+                color={COLORS.textPrimary}
               />
             </TouchableOpacity>
           )}
@@ -70,13 +90,11 @@ const AppHeader = (props: AppHeaderProps) => {
           {props.onProfilePress && (
             <TouchableOpacity
               onPress={props.onProfilePress}
-              style={styles.profilePillButton}
+              style={styles.circleProfileButton}
               activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityLabel="Open Profile">
-              <Text style={styles.profilePillText}>
-                {props.profileInitials || 'GU'}
-              </Text>
+              <Text style={styles.profilePillText}>{initials}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -84,30 +102,19 @@ const AppHeader = (props: AppHeaderProps) => {
     );
   }
 
-  const {title, subtitle, onBackPress, rightElement, dark = false} = props;
+  const {title, subtitle, onBackPress, rightElement} = props;
 
   return (
-    <View
-      style={[
-        styles.navContainer,
-        dark ? styles.navContainerDark : styles.navContainerLight,
-      ]}>
+    <View style={styles.navContainer}>
       <View style={styles.navLeft}>
         {onBackPress ? (
           <TouchableOpacity
             onPress={onBackPress}
-            style={[
-              styles.backButton,
-              dark ? styles.backButtonDark : styles.backButtonLight,
-            ]}
+            style={styles.backButton}
             activeOpacity={0.75}
             accessibilityRole="button"
             accessibilityLabel="Go back">
-            <AppIcon
-              name="back"
-              size={20}
-              color={dark ? COLORS.textOnPrimary : COLORS.textPrimary}
-            />
+            <AppIcon name="back" size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
         ) : (
           <View style={styles.navPlaceholder} />
@@ -115,21 +122,11 @@ const AppHeader = (props: AppHeaderProps) => {
       </View>
 
       <View style={styles.navCenter}>
-        <Text
-          style={[
-            styles.navTitle,
-            dark && styles.navTitleDark,
-          ]}
-          numberOfLines={1}>
+        <Text style={styles.navTitle} numberOfLines={1}>
           {title}
         </Text>
         {subtitle ? (
-          <Text
-            style={[
-              styles.navSubtitle,
-              dark && styles.navSubtitleDark,
-            ]}
-            numberOfLines={1}>
+          <Text style={styles.navSubtitle} numberOfLines={1}>
             {subtitle}
           </Text>
         ) : null}
@@ -148,7 +145,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: SPACING.md,
-    paddingBottom: SPACING.lg,
+    paddingBottom: SPACING.md,
   },
   brandLeft: {
     flexDirection: 'row',
@@ -156,61 +153,77 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: SPACING.sm,
   },
-  logoFrame: {
-    width: 46,
-    height: 46,
-    borderRadius: RADII.md,
-    overflow: 'hidden',
-    backgroundColor: COLORS.secondary,
+  avatarRing: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    padding: 2,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
     ...SHADOWS.card,
   },
-  logoImage: {
-    width: 46,
-    height: 46,
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
+  },
+  avatarFallback: {
+    flex: 1,
+    borderRadius: 22,
+    backgroundColor: COLORS.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.primary,
   },
   brandTextGroup: {
     flex: 1,
   },
-  brandName: {
-    ...TYPOGRAPHY.titleLarge,
-    fontSize: 24,
-    color: COLORS.secondary,
+  greetingTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    color: COLORS.textPrimary,
   },
   tagline: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: COLORS.textSecondary,
-    marginTop: 1,
+    marginTop: 2,
   },
   brandRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
   },
-  brandActionButton: {
+  circleActionButton: {
     width: 42,
     height: 42,
-    borderRadius: RADII.pill,
-    backgroundColor: COLORS.surface,
+    borderRadius: 21,
+    backgroundColor: COLORS.surfaceElevated,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.card,
   },
-  profilePillButton: {
+  circleProfileButton: {
     width: 42,
     height: 42,
-    borderRadius: RADII.pill,
-    backgroundColor: COLORS.secondary,
+    borderRadius: 21,
+    backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.card,
   },
   profilePillText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
-    color: COLORS.textOnPrimary,
+    color: COLORS.primary,
   },
   navContainer: {
     flexDirection: 'row',
@@ -219,14 +232,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     minHeight: 60,
-  },
-  navContainerLight: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.background,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderSubtle,
-  },
-  navContainerDark: {
-    backgroundColor: COLORS.secondary,
   },
   navLeft: {
     minWidth: 44,
@@ -244,17 +252,12 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: RADII.pill,
+    borderRadius: 20,
+    backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backButtonLight: {
-    backgroundColor: COLORS.background,
-    borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
-  },
-  backButtonDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   navPlaceholder: {
     width: 40,
@@ -265,16 +268,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: COLORS.textPrimary,
   },
-  navTitleDark: {
-    color: COLORS.textOnPrimary,
-  },
   navSubtitle: {
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
     marginTop: 1,
-  },
-  navSubtitleDark: {
-    color: COLORS.accent,
   },
 });
 

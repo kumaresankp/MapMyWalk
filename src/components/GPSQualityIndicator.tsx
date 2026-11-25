@@ -9,7 +9,7 @@ type GPSQualityIndicatorProps = {
 };
 
 /**
- * Floating map badge displaying GPS accuracy quality (bars + text) and recorded point count.
+ * Floating dark-glass map badge displaying GPS accuracy quality (bars + text) and point count.
  */
 const GPSQualityIndicator = ({
   accuracy,
@@ -27,14 +27,14 @@ const GPSQualityIndicator = ({
         label: 'Searching',
         bars: 0,
         color: COLORS.textSecondary,
-        bg: COLORS.surfaceSubtle,
+        bg: COLORS.surfaceElevated,
       }
     : accuracy <= 10
     ? {
         label: 'GPS Strong',
         bars: 3,
-        color: COLORS.success,
-        bg: COLORS.successSoft,
+        color: COLORS.primary,
+        bg: COLORS.primarySoft,
       }
     : accuracy <= 22
     ? {

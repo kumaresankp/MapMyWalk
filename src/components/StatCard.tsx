@@ -15,7 +15,7 @@ type StatCardProps = {
 };
 
 /**
- * Reusable metric display card with optional icon badge and tabular numbers.
+ * Reference-styled dark metric card with colored top icon badge and bold tabular value.
  */
 const StatCard = ({
   label,
@@ -33,9 +33,9 @@ const StatCard = ({
           <View
             style={[
               styles.iconBadge,
-              {backgroundColor: `${accentColor}16`},
+              {backgroundColor: `${accentColor}22`},
             ]}>
-            <AppIcon name={icon} size={16} color={accentColor} />
+            <AppIcon name={icon} size={15} color={accentColor} />
           </View>
         ) : null}
         <Text style={styles.label} numberOfLines={1}>
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     borderRadius: RADII.lg,
     padding: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     ...SHADOWS.card,
   },
   cardCompact: {
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   iconBadge: {
     width: 28,
     height: 28,
-    borderRadius: RADII.sm,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -95,6 +95,7 @@ const styles = StyleSheet.create({
   value: {
     ...TYPOGRAPHY.statValue,
     fontSize: 22,
+    color: COLORS.textPrimary,
   },
   valueCompact: {
     fontSize: 18,

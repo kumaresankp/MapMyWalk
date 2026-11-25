@@ -126,7 +126,7 @@ const ProfileScreen = ({navigation}: Props) => {
   if (isGuest || !user) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="light-content" />
         <AppHeader title="Account" onBackPress={() => navigation.goBack()} />
 
         <ScrollView
@@ -173,7 +173,7 @@ const ProfileScreen = ({navigation}: Props) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       <AppHeader title="Profile" onBackPress={() => navigation.goBack()} />
 
@@ -328,10 +328,12 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxl,
   },
   heroCard: {
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.secondarySoft,
     borderRadius: RADII.xl,
     paddingVertical: SPACING.xl,
     paddingHorizontal: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.primaryMuted,
     alignItems: 'center',
     ...SHADOWS.floating,
   },
@@ -343,14 +345,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.28)',
+    borderColor: COLORS.primaryMuted,
   },
   avatarImage: {
     width: 76,
     height: 76,
     borderRadius: 38,
     borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.28)',
+    borderColor: COLORS.primary,
   },
   avatarInitials: {
     fontSize: 26,
@@ -364,13 +366,13 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     fontSize: 22,
     fontWeight: '800',
-    color: COLORS.textOnPrimary,
+    color: COLORS.textPrimary,
   },
   heroEmail: {
     marginTop: 4,
     fontSize: 13,
     fontWeight: '500',
-    color: COLORS.primaryMuted,
+    color: COLORS.textSecondary,
   },
   section: {
     marginTop: SPACING.xl,
@@ -381,7 +383,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     ...SHADOWS.card,
   },
   infoRow: {
@@ -413,7 +415,7 @@ const styles = StyleSheet.create({
     borderRadius: RADII.lg,
     padding: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     ...SHADOWS.card,
   },
   editButtons: {
@@ -431,7 +433,7 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
     backgroundColor: COLORS.errorSoft,
     borderWidth: 1,
-    borderColor: '#FECDCA',
+    borderColor: 'rgba(255, 77, 79, 0.35)',
     borderRadius: RADII.md,
     padding: SPACING.sm,
   },
@@ -448,7 +450,7 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
     backgroundColor: COLORS.successSoft,
     borderWidth: 1,
-    borderColor: '#A6F4C5',
+    borderColor: 'rgba(46, 230, 110, 0.35)',
     borderRadius: RADII.md,
     padding: SPACING.sm,
   },
@@ -464,6 +466,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.xs,
     backgroundColor: COLORS.primarySoft,
+    borderWidth: 1,
+    borderColor: COLORS.primaryMuted,
     borderRadius: RADII.md,
     padding: SPACING.md,
   },
@@ -471,7 +475,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.secondary,
+    color: COLORS.textPrimary,
     lineHeight: 19,
   },
   actionSpacing: {

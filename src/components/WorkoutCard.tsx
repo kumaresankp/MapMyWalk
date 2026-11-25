@@ -13,7 +13,7 @@ type WorkoutCardProps = {
 };
 
 /**
- * Polished workout summary card used in Recent Workouts and Workout History.
+ * Reference-styled dark activity card with circular glowing activity icon and tabular metrics.
  */
 const WorkoutCard = ({
   workout,
@@ -21,9 +21,8 @@ const WorkoutCard = ({
   showPace = true,
 }: WorkoutCardProps) => {
   const isRun = workout.workoutType === 'Run';
-  const accentColor = isRun ? COLORS.primary : COLORS.accent;
-  const badgeBg = isRun ? COLORS.primarySoft : COLORS.accentSoft;
-  const iconColor = isRun ? COLORS.primary : COLORS.secondary;
+  const accentColor = isRun ? COLORS.coral : COLORS.primary;
+  const ringBg = isRun ? COLORS.coralSoft : COLORS.primarySoft;
 
   const paceValue = formatPace(
     workout.averagePace ?? workout.paceSecondsPerKm ?? null,
@@ -38,20 +37,21 @@ const WorkoutCard = ({
       accessibilityLabel={`${workout.workoutType} workout, ${(workout.distance / 1000).toFixed(2)} kilometers`}>
       <View style={styles.topRow}>
         <View style={styles.leftIdentity}>
-          <View style={[styles.typeBadge, {backgroundColor: badgeBg}]}>
+          <View
+            style={[
+              styles.typeCircle,
+              {backgroundColor: ringBg, borderColor: accentColor},
+            ]}>
             <AppIcon
               name={isRun ? 'run' : 'walk'}
               size={20}
-              color={iconColor}
+              color={accentColor}
             />
           </View>
 
-          <View>
-            <View style={styles.titleRow}>
-              <Text style={styles.typeTitle}>{workout.workoutType}</Text>
-              <View style={[styles.dotAccent, {backgroundColor: accentColor}]} />
-            </View>
-            <Text style={styles.dateText}>
+          <View style={styles.identityText}>
+            <Text style={styles.typeTitle}>{workout.workoutType}</Text>
+            <Text style={styles.dateText} numberOfLines={1}>
               {new Date(workout.finishedAt).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
@@ -66,22 +66,15 @@ const WorkoutCard = ({
           </View>
         </View>
 
-        <View style={styles.chevronWrap}>
-          <AppIcon name="chevronRight" size={16} color={COLORS.textMuted} />
+        <View style={styles.rightHero}>
+          <Text style={styles.heroDistance}>
+            {(workout.distance / 1000).toFixed(2)}
+          </Text>
+          <Text style={styles.heroUnit}>/km</Text>
         </View>
       </View>
 
       <View style={styles.metricsRow}>
-        <View style={styles.metricItem}>
-          <Text style={styles.metricValue}>
-            {(workout.distance / 1000).toFixed(2)}
-            <Text style={styles.metricUnit}> km</Text>
-          </Text>
-          <Text style={styles.metricLabel}>Distance</Text>
-        </View>
-
-        <View style={styles.divider} />
-
         <View style={styles.metricItem}>
           <Text style={styles.metricValue}>
             {formatDuration(workout.elapsedTime)}
@@ -103,6 +96,12 @@ const WorkoutCard = ({
             </View>
           </>
         ) : null}
+
+        <View style={styles.divider} />
+        <View style={styles.detailsPill}>
+          <Text style={styles.detailsText}>Details</Text>
+          <AppIcon name="chevronRight" size={13} color={COLORS.primary} />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -115,7 +114,7 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.sm,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     ...SHADOWS.card,
   },
   topRow: {
@@ -123,6 +122,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: SPACING.sm,
+    gap: SPACING.sm,
   },
   leftIdentity: {
     flexDirection: 'row',
@@ -130,27 +130,21 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
     flex: 1,
   },
-  typeBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: RADII.md,
+  typeCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  identityText: {
+    flex: 1,
   },
   typeTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: COLORS.textPrimary,
-  },
-  dotAccent: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
   },
   dateText: {
     fontSize: 12,
@@ -158,20 +152,26 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 2,
   },
-  chevronWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+  rightHero: {
+    alignItems: 'flex-end',
+  },
+  heroDistance: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  heroUnit: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
   metricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADII.md,
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.xs,
     paddingHorizontal: SPACING.sm,
   },
   metricItem: {
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   metricValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: COLORS.textPrimary,
     fontVariant: ['tabular-nums'],
@@ -199,8 +199,19 @@ const styles = StyleSheet.create({
   },
   divider: {
     width: 1,
-    height: 24,
+    height: 22,
     backgroundColor: COLORS.border,
+  },
+  detailsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: SPACING.sm,
+  },
+  detailsText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
 });
 

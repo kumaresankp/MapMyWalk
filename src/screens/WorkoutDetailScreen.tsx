@@ -93,7 +93,7 @@ const WorkoutDetailScreen = ({route, navigation}: Props) => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="light-content" />
         <AppHeader
           title="Workout Details"
           onBackPress={() => navigation.goBack()}
@@ -109,7 +109,7 @@ const WorkoutDetailScreen = ({route, navigation}: Props) => {
   if (!workout) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="light-content" />
         <AppHeader
           title="Workout Details"
           onBackPress={() => navigation.goBack()}
@@ -135,7 +135,7 @@ const WorkoutDetailScreen = ({route, navigation}: Props) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       <AppHeader
         title={`${workout.workoutType} Details`}
@@ -157,7 +157,7 @@ const WorkoutDetailScreen = ({route, navigation}: Props) => {
               <AppIcon
                 name={isRun ? 'run' : 'walk'}
                 size={16}
-                color={COLORS.accent}
+                color={isRun ? COLORS.coral : COLORS.primary}
               />
               <Text style={styles.typeChipText}>{workout.workoutType}</Text>
             </View>
@@ -172,30 +172,16 @@ const WorkoutDetailScreen = ({route, navigation}: Props) => {
           </View>
         </View>
 
-        {/* Recorded GPS Route */}
-        {routePoints.length > 1 ? (
-          <View style={styles.section}>
-            <SectionHeader title="Recorded Route" />
-            <RouteMapPreview
-              routePoints={routePoints}
-              height={240}
-              sourceId="workout-detail-route"
-              layerId="workout-detail-line"
-            />
-          </View>
-        ) : (
-          <View style={styles.section}>
-            <SectionHeader title="Recorded Route" />
-            <RouteMapPreview
-              routePoints={routePoints}
-              height={160}
-              sourceId="workout-detail-route"
-              layerId="workout-detail-line"
-            />
-          </View>
-        )}
+        <View style={styles.section}>
+          <SectionHeader title="Recorded Route" />
+          <RouteMapPreview
+            routePoints={routePoints}
+            height={routePoints.length > 1 ? 240 : 160}
+            sourceId="workout-detail-route"
+            layerId="workout-detail-line"
+          />
+        </View>
 
-        {/* Primary Performance Metrics */}
         <View style={styles.section}>
           <SectionHeader title="Workout Statistics" />
 
@@ -234,7 +220,7 @@ const WorkoutDetailScreen = ({route, navigation}: Props) => {
               value={workout.calories != null ? String(workout.calories) : '—'}
               unit={workout.calories != null ? 'kcal' : undefined}
               icon="calories"
-              accentColor={COLORS.warning}
+              accentColor={COLORS.coral}
               style={styles.gridItem}
               compact
             />
@@ -248,7 +234,7 @@ const WorkoutDetailScreen = ({route, navigation}: Props) => {
               }
               unit={workout.elevationGain != null ? 'm' : undefined}
               icon="elevation"
-              accentColor={COLORS.success}
+              accentColor={COLORS.accent}
               style={styles.gridItem}
               compact
             />
@@ -264,7 +250,6 @@ const WorkoutDetailScreen = ({route, navigation}: Props) => {
           </View>
         </View>
 
-        {/* Session Timestamps */}
         <View style={styles.timestampsCard}>
           <View style={styles.timestampRow}>
             <Text style={styles.timestampLabel}>Date</Text>
@@ -298,7 +283,6 @@ const WorkoutDetailScreen = ({route, navigation}: Props) => {
           </View>
         </View>
 
-        {/* Delete Workout Action */}
         <SecondaryButton
           label="Delete Workout"
           icon="trash"
@@ -337,9 +321,11 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxl,
   },
   heroCard: {
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.secondarySoft,
     borderRadius: RADII.xl,
     padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.primaryMuted,
     ...SHADOWS.floating,
   },
   heroTopRow: {
@@ -352,22 +338,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: COLORS.secondarySoft,
+    backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.sm,
     paddingVertical: 5,
     borderRadius: RADII.pill,
     borderWidth: 1,
-    borderColor: 'rgba(32, 200, 245, 0.25)',
+    borderColor: COLORS.border,
   },
   typeChipText: {
     fontSize: 13,
     fontWeight: '700',
-    color: COLORS.textOnPrimary,
+    color: COLORS.textPrimary,
   },
   heroDate: {
     fontSize: 12,
     fontWeight: '500',
-    color: COLORS.primaryMuted,
+    color: COLORS.textSecondary,
     flexShrink: 1,
     textAlign: 'right',
   },
@@ -381,13 +367,13 @@ const styles = StyleSheet.create({
     fontSize: 42,
     fontWeight: '800',
     letterSpacing: -1,
-    color: COLORS.textOnPrimary,
+    color: COLORS.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   heroUnit: {
     fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.accent,
+    fontWeight: '800',
+    color: COLORS.primary,
   },
   section: {
     marginTop: SPACING.lg,
@@ -408,7 +394,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     marginTop: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     ...SHADOWS.card,
   },
   timestampRow: {

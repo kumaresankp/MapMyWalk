@@ -67,6 +67,8 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<GPSPoint | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isRefiningInitialFix, setIsRefiningInitialFix] = useState(false);
   const [mapLoading, setMapLoading] = useState(true);
   const [mapError, setMapError] = useState(false);
 
@@ -110,11 +112,20 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
   }, [isPaused]);
 
   /*
-   * Android location permission
+   * Android location permission (checks before prompting to avoid redundant dialogs)
    */
   const requestLocationPermission = async () => {
     if (Platform.OS !== 'android') {
       return true;
+    }
+
+    if (typeof PermissionsAndroid.check === 'function') {
+      const hasPermission = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      );
+      if (hasPermission) {
+        return true;
+      }
     }
 
     const granted = await PermissionsAndroid.request(
@@ -146,10 +157,17 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
     };
   };
 
+  const CACHED_PREVIEW_MAX_AGE_MS = 60000;
+  const CACHED_PREVIEW_MAX_ACCURACY_M = 100;
+  const FRESH_RECORDING_MAX_AGE_MS = 15000;
+
   /*
    * Process GPS position
    */
-  const processGPSPosition = (position: GeolocationResponse) => {
+  const processGPSPosition = (
+    position: GeolocationResponse,
+    options: {allowCachedPreview?: boolean} = {},
+  ) => {
     console.log(
       'GPS SUCCESS:',
       position.coords.latitude,
@@ -164,17 +182,38 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
     }
 
     const newPoint = createGPSPoint(position);
+    const pointAgeMs = Math.max(0, Date.now() - newPoint.timestamp);
 
     /*
-     * First point
+     * First point: never record stale or inaccurate cached locations into gpsPoints/distance
      */
     if (!lastPointRef.current) {
-      console.log('FIRST GPS POINT');
+      const isFreshAndAccurate =
+        pointAgeMs <= FRESH_RECORDING_MAX_AGE_MS &&
+        isValidGPSPoint(null, newPoint);
 
-      lastPointRef.current = newPoint;
+      if (isFreshAndAccurate) {
+        console.log('FIRST GPS POINT');
+        lastPointRef.current = newPoint;
+        setGpsPoints([newPoint]);
+        setCurrentLocation(newPoint);
+        setIsRefiningInitialFix(false);
+        setLocationError(null);
+        return;
+      }
 
-      setGpsPoints([newPoint]);
-      setCurrentLocation(newPoint);
+      if (
+        options.allowCachedPreview &&
+        Number.isFinite(newPoint.latitude) &&
+        Number.isFinite(newPoint.longitude) &&
+        pointAgeMs <= CACHED_PREVIEW_MAX_AGE_MS &&
+        newPoint.accuracy <= CACHED_PREVIEW_MAX_ACCURACY_M
+      ) {
+        // Show map immediately using recent cached fix without recording it as a route point
+        setCurrentLocation(prev => prev ?? newPoint);
+        setIsRefiningInitialFix(true);
+        setLocationError(null);
+      }
 
       return;
     }
@@ -220,6 +259,8 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
      * Update location
      */
     setCurrentLocation(newPoint);
+    setIsRefiningInitialFix(false);
+    setLocationError(null);
   };
 
   /*
@@ -574,7 +615,9 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
 
     return (
       <SafeAreaView style={styles.locationScreen}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="light-content" />
+
+        <View style={styles.locationGlow} pointerEvents="none" />
 
         <View style={styles.locationContent}>
           <StatusIndicator variant="searching" label={`Preparing ${workoutType}`} />
@@ -624,11 +667,13 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
     );
   }
 
+  const isRun = workoutType === 'Run';
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Top Athletic Header */}
+      {/* Dark Athletic Header */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -636,15 +681,15 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
           activeOpacity={0.75}
           accessibilityRole="button"
           accessibilityLabel="Back">
-          <AppIcon name="back" size={20} color={COLORS.textOnPrimary} />
+          <AppIcon name="back" size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
           <View style={styles.workoutTypeBadge}>
             <AppIcon
-              name={workoutType === 'Run' ? 'run' : 'walk'}
+              name={isRun ? 'run' : 'walk'}
               size={16}
-              color={COLORS.accent}
+              color={isRun ? COLORS.coral : COLORS.primary}
             />
             <Text style={styles.headerTitle}>{workoutType}</Text>
           </View>
@@ -706,7 +751,7 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
                 id="workout-route-line"
                 type="line"
                 paint={{
-                  'line-color': COLORS.primary,
+                  'line-color': COLORS.mapRoute,
                   'line-width': 5.5,
                   'line-opacity': 0.94,
                 }}
@@ -715,7 +760,7 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
           )}
         </Map>
 
-        {/* Floating GPS Quality Pill */}
+        {/* Floating Dark-Glass GPS Quality Pill */}
         <View style={styles.gpsOverlay}>
           <GPSQualityIndicator
             accuracy={currentLocation.accuracy}
@@ -723,7 +768,6 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
           />
         </View>
 
-        {/* Map loading / error overlays */}
         {mapLoading && !mapError ? (
           <View style={styles.mapStatusPill}>
             <ActivityIndicator size="small" color={COLORS.primary} />
@@ -741,9 +785,8 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
         ) : null}
       </View>
 
-      {/* Compact Bottom Telemetry & Controls Panel */}
+      {/* Dark Glass Telemetry & Controls Panel */}
       <View style={styles.bottomPanel}>
-        {/* Primary Hero Metric: Distance */}
         <View style={styles.heroDistanceRow}>
           <View>
             <Text style={styles.heroLabel}>DISTANCE</Text>
@@ -787,7 +830,6 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
           </View>
         ) : null}
 
-        {/* Large Touch Controls */}
         <View style={styles.controls}>
           <Pressable
             style={({pressed}) => [
@@ -805,7 +847,7 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
               size={18}
               color={COLORS.textOnPrimary}
             />
-            <Text style={styles.controlButtonText}>
+            <Text style={styles.controlButtonTextDark}>
               {isPaused ? 'Resume' : 'Pause'}
             </Text>
           </Pressable>
@@ -819,8 +861,8 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
             onPress={finishWorkout}
             accessibilityRole="button"
             accessibilityLabel="Finish workout">
-            <AppIcon name="stop" size={16} color={COLORS.textOnPrimary} />
-            <Text style={styles.controlButtonText}>Finish</Text>
+            <AppIcon name="stop" size={16} color={COLORS.textPrimary} />
+            <Text style={styles.controlButtonTextLight}>Finish</Text>
           </Pressable>
         </View>
       </View>
@@ -831,7 +873,7 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -839,13 +881,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderSubtle,
   },
   headerBackButton: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -857,17 +903,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: COLORS.secondarySoft,
+    backgroundColor: COLORS.surfaceElevated,
     paddingHorizontal: SPACING.md,
     paddingVertical: 6,
     borderRadius: RADII.pill,
     borderWidth: 1,
-    borderColor: 'rgba(32, 200, 245, 0.25)',
+    borderColor: COLORS.border,
   },
   headerTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: COLORS.textOnPrimary,
+    color: COLORS.textPrimary,
   },
   headerRight: {
     alignItems: 'flex-end',
@@ -912,9 +958,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
-    backgroundColor: COLORS.warningSoft,
+    backgroundColor: COLORS.overlayDark,
     borderWidth: 1,
-    borderColor: '#FEDF89',
+    borderColor: 'rgba(255, 176, 32, 0.4)',
     borderRadius: RADII.md,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
@@ -933,7 +979,7 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.md,
     paddingBottom: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderSubtle,
+    borderTopColor: COLORS.border,
     ...SHADOWS.floating,
   },
   heroDistanceRow: {
@@ -967,12 +1013,12 @@ const styles = StyleSheet.create({
   secondaryMetricsGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADII.md,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     gap: SPACING.sm,
   },
   secondaryMetricBox: {
@@ -1025,7 +1071,7 @@ const styles = StyleSheet.create({
   controlButton: {
     flex: 1,
     minHeight: 52,
-    borderRadius: RADII.md,
+    borderRadius: RADII.pill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1039,19 +1085,35 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.warning,
   },
   resumeButton: {
-    backgroundColor: COLORS.success,
+    backgroundColor: COLORS.primary,
   },
   finishButton: {
     backgroundColor: COLORS.error,
   },
-  controlButtonText: {
+  controlButtonTextDark: {
     color: COLORS.textOnPrimary,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  controlButtonTextLight: {
+    color: COLORS.textPrimary,
     fontSize: 16,
     fontWeight: '800',
   },
   locationScreen: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  locationGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 220,
+    backgroundColor: COLORS.secondarySoft,
+    opacity: 0.7,
+    borderBottomLeftRadius: 48,
+    borderBottomRightRadius: 48,
   },
   locationContent: {
     flex: 1,
@@ -1090,7 +1152,7 @@ const styles = StyleSheet.create({
   locationLoadingTitle: {
     ...TYPOGRAPHY.titleLarge,
     textAlign: 'center',
-    color: COLORS.secondary,
+    color: COLORS.textPrimary,
   },
   locationLoadingText: {
     ...TYPOGRAPHY.body,
@@ -1105,7 +1167,7 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginTop: SPACING.xl,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     ...SHADOWS.card,
   },
   tipHeader: {
@@ -1116,7 +1178,7 @@ const styles = StyleSheet.create({
   tipIconWrap: {
     width: 28,
     height: 28,
-    borderRadius: RADII.sm,
+    borderRadius: 14,
     backgroundColor: COLORS.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1147,7 +1209,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(22, 119, 255, 0.22)',
+    backgroundColor: 'rgba(22, 119, 255, 0.24)',
   },
   directionArrow: {
     position: 'absolute',
@@ -1160,7 +1222,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 13,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: COLORS.secondary,
+    borderBottomColor: COLORS.background,
   },
   currentLocationDot: {
     position: 'absolute',
@@ -1169,9 +1231,9 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.mapRoute,
     borderWidth: 3,
-    borderColor: COLORS.surface,
+    borderColor: '#FFFFFF',
     ...SHADOWS.card,
   },
 });

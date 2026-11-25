@@ -12,7 +12,7 @@ type StatusIndicatorProps = {
 };
 
 /**
- * Accessible status pill pairing color, icon, and explicit text label.
+ * Accessible dark-mode status pill pairing color, icon, and explicit text label.
  */
 const StatusIndicator = ({variant, label}: StatusIndicatorProps) => {
   const pulse = useRef(new Animated.Value(1)).current;
@@ -48,7 +48,7 @@ const StatusIndicator = ({variant, label}: StatusIndicatorProps) => {
   > = {
     tracking: {
       bg: COLORS.successSoft,
-      border: '#A6F4C5',
+      border: 'rgba(46, 230, 110, 0.35)',
       fg: COLORS.successDark,
       dot: COLORS.success,
       text: label ?? 'Live Tracking',
@@ -56,24 +56,24 @@ const StatusIndicator = ({variant, label}: StatusIndicatorProps) => {
     },
     paused: {
       bg: COLORS.warningSoft,
-      border: '#FEDF89',
+      border: 'rgba(255, 176, 32, 0.35)',
       fg: COLORS.warningDark,
       dot: COLORS.warning,
       text: label ?? 'Paused',
       icon: 'pause',
     },
     completed: {
-      bg: COLORS.successSoft,
-      border: '#A6F4C5',
-      fg: COLORS.successDark,
-      dot: COLORS.success,
+      bg: COLORS.primarySoft,
+      border: COLORS.primaryMuted,
+      fg: COLORS.primary,
+      dot: COLORS.primary,
       text: label ?? 'Completed',
       icon: 'check',
     },
     searching: {
       bg: COLORS.primarySoft,
       border: COLORS.primaryMuted,
-      fg: COLORS.primaryDark,
+      fg: COLORS.primary,
       dot: COLORS.primary,
       text: label ?? 'Acquiring GPS',
       icon: 'gps',

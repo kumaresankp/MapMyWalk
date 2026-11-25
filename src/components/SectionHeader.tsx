@@ -11,7 +11,7 @@ type SectionHeaderProps = {
 };
 
 /**
- * Consistent section title bar with an optional inline navigation link.
+ * Consistent dark section title bar with an optional inline Electric Lime action link.
  */
 const SectionHeader = ({
   title,

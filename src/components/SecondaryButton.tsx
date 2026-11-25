@@ -20,7 +20,7 @@ type SecondaryButtonProps = {
 };
 
 /**
- * Medium-emphasis button for secondary actions, outline actions, and controls.
+ * Medium-emphasis dark pill button for secondary actions and controls.
  */
 const SecondaryButton = ({
   label,
@@ -44,25 +44,25 @@ const SecondaryButton = ({
     tone === 'danger'
       ? {
           bg: COLORS.errorSoft,
-          border: '#FECDCA',
+          border: 'rgba(255, 77, 79, 0.35)',
           text: COLORS.errorDark,
         }
       : tone === 'warning'
       ? {
           bg: COLORS.warningSoft,
-          border: '#FEDF89',
+          border: 'rgba(255, 176, 32, 0.35)',
           text: COLORS.warningDark,
         }
       : tone === 'neutral'
       ? {
-          bg: COLORS.surface,
+          bg: COLORS.surfaceElevated,
           border: COLORS.border,
           text: COLORS.textPrimary,
         }
       : {
           bg: COLORS.primarySoft,
           border: COLORS.primaryMuted,
-          text: COLORS.primaryDark,
+          text: COLORS.primary,
         };
 
   return (
@@ -91,7 +91,7 @@ const SecondaryButton = ({
 const styles = StyleSheet.create({
   button: {
     minHeight: 48,
-    borderRadius: RADII.md,
+    borderRadius: RADII.pill,
     borderWidth: 1,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   pressed: {
-    opacity: 0.86,
+    opacity: 0.85,
   },
   label: {
     fontSize: 15,

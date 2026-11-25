@@ -71,6 +71,7 @@ const WorkoutSummaryScreen = ({
   }, [badgeScale, contentFade]);
 
   const paceText = formatPace(averagePace);
+  const isRun = workoutType === 'Run';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -79,7 +80,7 @@ const WorkoutSummaryScreen = ({
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Rewarding Navy Hero Card */}
+        {/* Emerald-Glow Dark Hero Card */}
         <View style={styles.heroCard}>
           <Animated.View
             style={[
@@ -98,16 +99,15 @@ const WorkoutSummaryScreen = ({
 
           <View style={styles.typePill}>
             <AppIcon
-              name={workoutType === 'Run' ? 'run' : 'walk'}
+              name={isRun ? 'run' : 'walk'}
               size={15}
-              color={COLORS.accent}
+              color={isRun ? COLORS.coral : COLORS.primary}
             />
             <Text style={styles.typePillText}>{workoutType} Session</Text>
           </View>
         </View>
 
         <Animated.View style={[styles.body, {opacity: contentFade}]}>
-          {/* Recorded Route Preview */}
           <View style={styles.section}>
             <SectionHeader title="Recorded Route" />
             <RouteMapPreview
@@ -118,7 +118,6 @@ const WorkoutSummaryScreen = ({
             />
           </View>
 
-          {/* Metrics Grid */}
           <View style={styles.section}>
             <SectionHeader title="Performance Breakdown" />
 
@@ -145,7 +144,7 @@ const WorkoutSummaryScreen = ({
                 value={calories != null ? String(calories) : '—'}
                 unit={calories != null ? 'kcal' : undefined}
                 icon="calories"
-                accentColor={COLORS.warning}
+                accentColor={COLORS.coral}
                 style={styles.gridItem}
               />
 
@@ -154,7 +153,7 @@ const WorkoutSummaryScreen = ({
                 value={elevationGain != null ? String(elevationGain) : '—'}
                 unit={elevationGain != null ? 'm' : undefined}
                 icon="elevation"
-                accentColor={COLORS.success}
+                accentColor={COLORS.accent}
                 style={styles.gridItem}
               />
 
@@ -169,14 +168,13 @@ const WorkoutSummaryScreen = ({
               <StatCard
                 label="Activity"
                 value={workoutType}
-                icon={workoutType === 'Run' ? 'run' : 'walk'}
-                accentColor={COLORS.secondary}
+                icon={isRun ? 'run' : 'walk'}
+                accentColor={isRun ? COLORS.coral : COLORS.primary}
                 style={styles.gridItem}
               />
             </View>
           </View>
 
-          {/* Route & Estimate Note */}
           <View style={styles.noteCard}>
             <View style={styles.noteRow}>
               <AppIcon name="pin" size={16} color={COLORS.primary} />
@@ -187,7 +185,6 @@ const WorkoutSummaryScreen = ({
             </Text>
           </View>
 
-          {/* Navigation Actions */}
           <View style={styles.buttons}>
             <PrimaryButton
               label="Back to Home"
@@ -196,7 +193,7 @@ const WorkoutSummaryScreen = ({
             <SecondaryButton
               label="View Workout History"
               icon="history"
-              tone="primary"
+              tone="neutral"
               onPress={() => navigation.navigate('WorkoutHistory')}
             />
           </View>
@@ -216,12 +213,14 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxl,
   },
   heroCard: {
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.secondarySoft,
     paddingTop: SPACING.xl,
     paddingBottom: SPACING.xl,
     paddingHorizontal: SPACING.lg,
     borderBottomLeftRadius: RADII.xl,
     borderBottomRightRadius: RADII.xl,
+    borderBottomWidth: 1,
+    borderColor: COLORS.primaryMuted,
     alignItems: 'center',
     ...SHADOWS.floating,
   },
@@ -229,26 +228,24 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: 31,
-    backgroundColor: COLORS.success,
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.md,
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   heroDistance: {
     marginTop: SPACING.md,
     fontSize: 52,
     fontWeight: '800',
     letterSpacing: -1.5,
-    color: COLORS.textOnPrimary,
+    color: COLORS.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   heroDistanceLabel: {
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.4,
-    color: COLORS.primaryMuted,
+    color: COLORS.primary,
     marginTop: 2,
   },
   typePill: {
@@ -256,17 +253,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: COLORS.secondarySoft,
+    backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.md,
     paddingVertical: 6,
     borderRadius: RADII.pill,
     borderWidth: 1,
-    borderColor: 'rgba(32, 200, 245, 0.25)',
+    borderColor: COLORS.border,
   },
   typePillText: {
     fontSize: 13,
     fontWeight: '700',
-    color: COLORS.textOnPrimary,
+    color: COLORS.textPrimary,
   },
   body: {
     paddingHorizontal: SPACING.lg,
@@ -289,7 +286,7 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginTop: SPACING.lg,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     ...SHADOWS.card,
   },
   noteRow: {

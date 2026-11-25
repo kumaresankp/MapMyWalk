@@ -41,7 +41,7 @@ const WelcomeScreen = ({navigation}: Props) => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Brand Hero */}
+        {/* Emerald-Glow Dark Brand Hero */}
         <View style={styles.heroBanner}>
           <View style={styles.logoFrame}>
             <Image
@@ -56,7 +56,6 @@ const WelcomeScreen = ({navigation}: Props) => {
         </View>
 
         <View style={styles.body}>
-          {/* Highlights */}
           <View style={styles.featuresCard}>
             {FEATURES.map((item, index) => (
               <View
@@ -85,7 +84,6 @@ const WelcomeScreen = ({navigation}: Props) => {
             </View>
           ) : null}
 
-          {/* Auth Actions */}
           <View style={styles.actions}>
             <PrimaryButton
               label="Sign In"
@@ -94,7 +92,7 @@ const WelcomeScreen = ({navigation}: Props) => {
 
             <SecondaryButton
               label="Create Account"
-              tone="primary"
+              tone="neutral"
               onPress={() => navigation.navigate('SignUp')}
             />
 
@@ -126,40 +124,42 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxl,
   },
   heroBanner: {
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.secondarySoft,
     paddingTop: SPACING.xxl,
     paddingBottom: SPACING.xl,
     paddingHorizontal: SPACING.xl,
     borderBottomLeftRadius: RADII.xl,
     borderBottomRightRadius: RADII.xl,
+    borderBottomWidth: 1,
+    borderColor: COLORS.primaryMuted,
     alignItems: 'center',
     ...SHADOWS.floating,
   },
   logoFrame: {
-    width: 80,
-    height: 80,
+    width: 82,
+    height: 82,
     borderRadius: RADII.lg,
     overflow: 'hidden',
-    backgroundColor: COLORS.secondarySoft,
+    backgroundColor: COLORS.surface,
     borderWidth: 2,
-    borderColor: 'rgba(32, 200, 245, 0.35)',
+    borderColor: COLORS.primary,
     marginBottom: SPACING.md,
   },
   logoImage: {
-    width: 80,
-    height: 80,
+    width: 82,
+    height: 82,
   },
   brandName: {
     fontSize: 30,
     fontWeight: '800',
     letterSpacing: -0.6,
-    color: COLORS.textOnPrimary,
+    color: COLORS.textPrimary,
   },
   tagline: {
     marginTop: 4,
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.accent,
+    color: COLORS.primary,
   },
   body: {
     flex: 1,
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     borderRadius: RADII.lg,
     paddingHorizontal: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
     ...SHADOWS.card,
   },
   featureRow: {
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   featureIcon: {
     width: 42,
     height: 42,
-    borderRadius: RADII.md,
+    borderRadius: 21,
     backgroundColor: COLORS.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
     backgroundColor: COLORS.warningSoft,
     borderWidth: 1,
-    borderColor: '#FEDF89',
+    borderColor: 'rgba(255, 176, 32, 0.35)',
     borderRadius: RADII.md,
     padding: SPACING.sm,
   },
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    borderRadius: RADII.md,
+    borderRadius: RADII.pill,
   },
   guestButtonPressed: {
     opacity: 0.7,
