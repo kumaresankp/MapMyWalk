@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delete MyWalkMap Account</title>
+  <style>
+    :root {
+      --bg: #0a0c0b;
+      --surface: #151817;
+      --elevated: #1c201e;
+      --border: #262b28;
+      --lime: #b4ff2a;
+      --error: #ff4d4f;
+      --error-soft: rgba(255, 77, 79, 0.15);
+      --success: #2ee66e;
+      --success-soft: rgba(46, 230, 110, 0.15);
+      --text: #f8faf9;
+      --muted: #949b97;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(circle at top, #122619 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 28px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    }
+    .brand {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--lime);
+      margin-bottom: 8px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 24px;
+      font-weight: 800;
+    }
+    p {
+      margin: 0 0 16px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+    .notice {
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: var(--elevated);
+      color: var(--text);
+      font-size: 15px;
+      margin-bottom: 14px;
+      outline: none;
+    }
+    input:focus {
+      border-color: var(--lime);
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      border-radius: 999px;
+      border: none;
+      background: var(--error);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+    }
+    .status.error {
+      display: block;
+      background: var(--error-soft);
+      color: #ff8587;
+      border: 1px solid rgba(255, 77, 79, 0.35);
+    }
+    .status.success {
+      display: block;
+      background: var(--success-soft);
+      color: #6bf29b;
+      border: 1px solid rgba(46, 230, 110, 0.35);
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">MyWalkMap</div>
+    <h1>Delete Your Account</h1>
+    <p>
+      Request permanent deletion of your MyWalkMap account without needing to reinstall the Android app.
+    </p>
+
+    <div class="notice">
+      <strong>What is deleted:</strong> Your Supabase authentication account and your profile record (full name and avatar URL). Workout routes and history in MyWalkMap are stored locally on your device only.
+    </div>
+
+    <form id="deleteForm">
+      <label for="email">Account Email</label>
+      <input id="email" type="email" required placeholder="you@example.com" autocomplete="email" />
+
+      <label for="password">Password</label>
+      <input id="password" type="password" required placeholder="Enter your password" autocomplete="current-password" />
+
+      <label for="confirmText">Type DELETE to confirm</label>
+      <input id="confirmText" type="text" required placeholder="DELETE" />
+
+      <button id="submitBtn" type="submit">Permanently Delete Account</button>
+    </form>
+
+    <div id="statusBox" class="status" role="status"></div>
+  </main>
+
+  <script>
+    // Replace with your deployed Supabase Project URL before hosting this page:
+    const SUPABASE_PROJECT_URL = "https://your-project-id.supabase.co";
+    const DELETE_ENDPOINT = SUPABASE_PROJECT_URL + "/functions/v1/delete-account";
+
+    const form = document.getElementById("deleteForm");
+    const submitBtn = document.getElementById("submitBtn");
+    const statusBox = document.getElementById("statusBox");
+
+    function showStatus(type, message) {
+      statusBox.className = "status " + type;
+      statusBox.textContent = message;
+    }
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      statusBox.className = "status";
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const confirmText = document.getElementById("confirmText").value.trim();
+
+      if (confirmText !== "DELETE") {
+        showStatus("error", "Please type DELETE in all caps to confirm.");
+        return;
+      }
+
+      if (SUPABASE_PROJECT_URL.includes("your-project-id")) {
+        showStatus("error", "Configure SUPABASE_PROJECT_URL in delete-account.html before hosting.");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Deleting Account...";
+
+      try {
+        const res = await fetch(DELETE_ENDPOINT, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({email, password}),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Unable to delete account.");
+        }
+
+        form.reset();
+        showStatus(
+          "success",
+          "Your MyWalkMap account and profile data have been permanently deleted.",
+        );
+      } catch (err) {
+        showStatus("error", err.message || "Unable to complete deletion request.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Permanently Delete Account";
+      }
+    });
+  </script>
+</body>
+</html>

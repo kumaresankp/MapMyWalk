@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {
   Image,
   StyleSheet,
@@ -7,7 +7,8 @@ import {
   View,
 } from 'react-native';
 
-import {COLORS, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
+import {useTheme} from '../context/ThemeContext';
+import {SHADOWS, SPACING, ThemeColors, TYPOGRAPHY} from '../theme/theme';
 import AppIcon, {AppIconName} from './AppIcon';
 
 type BrandHeaderProps = {
@@ -20,6 +21,7 @@ type BrandHeaderProps = {
   onRightActionPress?: () => void;
   profileInitials?: string;
   onProfilePress?: () => void;
+  onMenuPress?: () => void;
 };
 
 type NavHeaderProps = {
@@ -37,29 +39,24 @@ type AppHeaderProps = BrandHeaderProps | NavHeaderProps;
  * Reference-inspired dark header with greeting/avatar on Home and circular back/action pills on sub-screens.
  */
 const AppHeader = (props: AppHeaderProps) => {
+  const {colors} = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   if (props.variant === 'brand') {
     const initials = props.profileInitials || 'MW';
     return (
       <View style={styles.brandContainer}>
-        <TouchableOpacity
-          onPress={props.onProfilePress}
-          style={styles.brandLeft}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel="Open Profile">
-          <View style={styles.avatarRing}>
-            {props.avatarUrl ? (
-              <Image
-                source={{uri: props.avatarUrl}}
-                style={styles.avatarImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Text style={styles.avatarInitials}>{initials}</Text>
-              </View>
-            )}
-          </View>
+        <View style={styles.brandLeft}>
+          {props.onMenuPress ? (
+            <TouchableOpacity
+              onPress={props.onMenuPress}
+              style={styles.circleActionButton}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel="Open Navigation Menu">
+              <AppIcon name="menu" size={18} color={colors.textPrimary} />
+            </TouchableOpacity>
+          ) : null}
 
           <View style={styles.brandTextGroup}>
             <Text style={styles.greetingTitle} numberOfLines={1}>
@@ -69,7 +66,7 @@ const AppHeader = (props: AppHeaderProps) => {
               {props.subtitle || 'Every Step Has a Story.'}
             </Text>
           </View>
-        </TouchableOpacity>
+        </View>
 
         <View style={styles.brandRightActions}>
           {props.onRightActionPress && (
@@ -82,7 +79,7 @@ const AppHeader = (props: AppHeaderProps) => {
               <AppIcon
                 name={props.rightActionIcon ?? 'shield'}
                 size={18}
-                color={COLORS.textPrimary}
+                color={colors.textPrimary}
               />
             </TouchableOpacity>
           )}
@@ -90,11 +87,21 @@ const AppHeader = (props: AppHeaderProps) => {
           {props.onProfilePress && (
             <TouchableOpacity
               onPress={props.onProfilePress}
-              style={styles.circleProfileButton}
+              style={styles.avatarRing}
               activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityLabel="Open Profile">
-              <Text style={styles.profilePillText}>{initials}</Text>
+              {props.avatarUrl ? (
+                <Image
+                  source={{uri: props.avatarUrl}}
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarInitials}>{initials}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -114,7 +121,7 @@ const AppHeader = (props: AppHeaderProps) => {
             activeOpacity={0.75}
             accessibilityRole="button"
             accessibilityLabel="Go back">
-            <AppIcon name="back" size={20} color={COLORS.textPrimary} />
+            <AppIcon name="back" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         ) : (
           <View style={styles.navPlaceholder} />
@@ -139,140 +146,126 @@ const AppHeader = (props: AppHeaderProps) => {
   );
 };
 
-const styles = StyleSheet.create({
-  brandContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.md,
-  },
-  brandLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: SPACING.sm,
-  },
-  avatarRing: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    padding: 2,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.surface,
-    ...SHADOWS.card,
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 22,
-  },
-  avatarFallback: {
-    flex: 1,
-    borderRadius: 22,
-    backgroundColor: COLORS.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
-  brandTextGroup: {
-    flex: 1,
-  },
-  greetingTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-    color: COLORS.textPrimary,
-  },
-  tagline: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  brandRightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-  },
-  circleActionButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: COLORS.surfaceElevated,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  circleProfileButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: COLORS.surfaceElevated,
-    borderWidth: 1,
-    borderColor: COLORS.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profilePillText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
-  navContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    minHeight: 60,
-    backgroundColor: COLORS.background,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderSubtle,
-  },
-  navLeft: {
-    minWidth: 44,
-    alignItems: 'flex-start',
-  },
-  navCenter: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: SPACING.xs,
-  },
-  navRight: {
-    minWidth: 44,
-    alignItems: 'flex-end',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.surfaceElevated,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navPlaceholder: {
-    width: 40,
-    height: 40,
-  },
-  navTitle: {
-    ...TYPOGRAPHY.titleMedium,
-    fontSize: 18,
-    color: COLORS.textPrimary,
-  },
-  navSubtitle: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
-    marginTop: 1,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    brandContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: SPACING.md,
+      paddingBottom: SPACING.md,
+    },
+    brandLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: SPACING.sm,
+    },
+    avatarRing: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      padding: 2,
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+      backgroundColor: colors.surface,
+      ...SHADOWS.card,
+    },
+    avatarImage: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 20,
+    },
+    avatarFallback: {
+      flex: 1,
+      borderRadius: 20,
+      backgroundColor: colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarInitials: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: colors.primary,
+    },
+    brandTextGroup: {
+      flex: 1,
+    },
+    greetingTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      letterSpacing: -0.3,
+      color: colors.textPrimary,
+    },
+    tagline: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    brandRightActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.xs,
+    },
+    circleActionButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    navContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.sm,
+      minHeight: 60,
+      backgroundColor: colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderSubtle,
+    },
+    navLeft: {
+      minWidth: 44,
+      alignItems: 'flex-start',
+    },
+    navCenter: {
+      flex: 1,
+      alignItems: 'center',
+      paddingHorizontal: SPACING.xs,
+    },
+    navRight: {
+      minWidth: 44,
+      alignItems: 'flex-end',
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    navPlaceholder: {
+      width: 40,
+      height: 40,
+    },
+    navTitle: {
+      ...TYPOGRAPHY.titleMedium,
+      fontSize: 18,
+      color: colors.textPrimary,
+    },
+    navSubtitle: {
+      ...TYPOGRAPHY.caption,
+      color: colors.textSecondary,
+      marginTop: 1,
+    },
+  });
 
 export default AppHeader;

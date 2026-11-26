@@ -1,4 +1,4 @@
-import React, {useRef} from 'react';
+import React, {useMemo, useRef} from 'react';
 import {
   Animated,
   Pressable,
@@ -8,7 +8,8 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import {COLORS, RADII, SHADOWS, SPACING} from '../theme/theme';
+import {useTheme} from '../context/ThemeContext';
+import {RADII, SHADOWS, SPACING, ThemeColors} from '../theme/theme';
 import AppIcon, {AppIconName} from './AppIcon';
 
 type PrimaryButtonProps = {
@@ -21,7 +22,7 @@ type PrimaryButtonProps = {
 };
 
 /**
- * High-emphasis pill action button with Electric Lime primary fill and dark high-contrast label.
+ * High-emphasis pill action button with theme-aware primary fill and high-contrast label.
  */
 const PrimaryButton = ({
   label,
@@ -31,6 +32,8 @@ const PrimaryButton = ({
   style,
   disabled = false,
 }: PrimaryButtonProps) => {
+  const {colors} = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const scale = useRef(new Animated.Value(1)).current;
 
   const animateTo = (value: number) => {
@@ -42,17 +45,21 @@ const PrimaryButton = ({
     }).start();
   };
 
-  const isLightText = variant === 'danger' || variant === 'navy';
   const bgColor =
     variant === 'danger'
-      ? COLORS.error
+      ? colors.error
       : variant === 'success'
-      ? COLORS.accent
+      ? colors.accent
       : variant === 'navy'
-      ? COLORS.surfaceElevated
-      : COLORS.primary;
+      ? colors.surfaceElevated
+      : colors.primary;
 
-  const textColor = isLightText ? COLORS.textPrimary : COLORS.textOnPrimary;
+  const textColor =
+    variant === 'danger'
+      ? colors.textOnDark
+      : variant === 'navy'
+      ? colors.textPrimary
+      : colors.textOnPrimary;
 
   return (
     <Animated.View style={[{transform: [{scale}]}, style]}>
@@ -77,33 +84,34 @@ const PrimaryButton = ({
   );
 };
 
-const styles = StyleSheet.create({
-  button: {
-    minHeight: 54,
-    borderRadius: RADII.pill,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.xs,
-    ...SHADOWS.button,
-  },
-  navyBorder: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  pressed: {
-    opacity: 0.9,
-  },
-  disabled: {
-    opacity: 0.45,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    button: {
+      minHeight: 54,
+      borderRadius: RADII.pill,
+      paddingHorizontal: SPACING.lg,
+      paddingVertical: SPACING.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: SPACING.xs,
+      ...SHADOWS.button,
+    },
+    navyBorder: {
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    pressed: {
+      opacity: 0.9,
+    },
+    disabled: {
+      opacity: 0.45,
+    },
+    label: {
+      fontSize: 16,
+      fontWeight: '800',
+      letterSpacing: 0.2,
+    },
+  });
 
 export default PrimaryButton;

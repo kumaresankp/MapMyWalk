@@ -22,7 +22,11 @@ export type AppIconName =
   | 'shield'
   | 'history'
   | 'pin'
-  | 'alert';
+  | 'alert'
+  | 'menu'
+  | 'close'
+  | 'user'
+  | 'home';
 
 type AppIconProps = {
   name: AppIconName;
@@ -722,6 +726,115 @@ const AppIcon = ({
               }}
             />
           </View>
+        </View>
+      );
+
+    case 'menu':
+      return (
+        <View style={[styles.box, {width: s, height: s, justifyContent: 'space-evenly', paddingVertical: s * 0.18}]}>
+          <View style={{width: s * 0.72, height: Math.max(2, s * 0.1), borderRadius: s * 0.05, backgroundColor: color}} />
+          <View style={{width: s * 0.56, height: Math.max(2, s * 0.1), borderRadius: s * 0.05, backgroundColor: color, alignSelf: 'flex-start', marginLeft: s * 0.14}} />
+          <View style={{width: s * 0.72, height: Math.max(2, s * 0.1), borderRadius: s * 0.05, backgroundColor: color}} />
+        </View>
+      );
+
+    case 'close':
+      return (
+        <View style={[styles.box, {width: s, height: s}]}>
+          <View
+            style={[
+              styles.abs,
+              {
+                width: s * 0.72,
+                height: Math.max(2, s * 0.11),
+                borderRadius: s * 0.05,
+                backgroundColor: color,
+                transform: [{rotate: '45deg'}],
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.abs,
+              {
+                width: s * 0.72,
+                height: Math.max(2, s * 0.11),
+                borderRadius: s * 0.05,
+                backgroundColor: color,
+                transform: [{rotate: '-45deg'}],
+              },
+            ]}
+          />
+        </View>
+      );
+
+    case 'user':
+      return (
+        <View style={[styles.box, {width: s, height: s}]}>
+          <View
+            style={[
+              styles.abs,
+              {
+                width: s * 0.34,
+                height: s * 0.34,
+                borderRadius: s * 0.17,
+                borderWidth: Math.max(1.8, s * 0.09),
+                borderColor: color,
+                top: s * 0.12,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.abs,
+              {
+                width: s * 0.66,
+                height: s * 0.32,
+                borderTopLeftRadius: s * 0.33,
+                borderTopRightRadius: s * 0.33,
+                borderWidth: Math.max(1.8, s * 0.09),
+                borderBottomWidth: 0,
+                borderColor: color,
+                bottom: s * 0.1,
+              },
+            ]}
+          />
+        </View>
+      );
+
+    case 'home':
+      return (
+        <View style={[styles.box, {width: s, height: s}]}>
+          <View
+            style={[
+              styles.abs,
+              {
+                width: s * 0.56,
+                height: s * 0.56,
+                borderTopWidth: Math.max(1.8, s * 0.09),
+                borderLeftWidth: Math.max(1.8, s * 0.09),
+                borderColor: color,
+                top: s * 0.18,
+                transform: [{rotate: '45deg'}],
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.abs,
+              {
+                width: s * 0.58,
+                height: s * 0.42,
+                borderLeftWidth: Math.max(1.8, s * 0.09),
+                borderRightWidth: Math.max(1.8, s * 0.09),
+                borderBottomWidth: Math.max(1.8, s * 0.09),
+                borderBottomLeftRadius: s * 0.08,
+                borderBottomRightRadius: s * 0.08,
+                borderColor: color,
+                bottom: s * 0.12,
+              },
+            ]}
+          />
         </View>
       );
   }

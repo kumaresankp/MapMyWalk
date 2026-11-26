@@ -3,6 +3,8 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  PermissionsAndroid,
+  Platform,
   Pressable,
   ScrollView,
   StatusBar,
@@ -11,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import Geolocation from '@react-native-community/geolocation';
 
 import {useFocusEffect} from '@react-navigation/native';
 
@@ -21,13 +24,15 @@ import {
   PrimaryButton,
   SecondaryButton,
   SectionHeader,
+  SideDrawer,
   StatCard,
   WorkoutCard,
   WorkoutTypeSelector,
 } from '../components';
 import {useAuth} from '../context/AuthContext';
+import {useTheme} from '../context/ThemeContext';
 import {getWorkouts} from '../services/WorkoutStorage';
-import {COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
+import {RADII, SHADOWS, SPACING, ThemeColors, TYPOGRAPHY} from '../theme/theme';
 import {StoredWorkout} from '../types/Workout';
 
 type Props = {
@@ -37,10 +42,13 @@ type Props = {
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const HomeScreen = ({navigation}: Props) => {
-  const {user, profile, isGuest} = useAuth();
+  const {colors, resolvedTheme} = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const {user, profile, isGuest, signOut, exitGuestMode} = useAuth();
   const [workoutType, setWorkoutType] = useState<'Walk' | 'Run'>('Walk');
   const [workouts, setWorkouts] = useState<StoredWorkout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(12)).current;
@@ -76,6 +84,43 @@ const HomeScreen = ({navigation}: Props) => {
       };
 
       loadWorkouts();
+
+      // Silently warm up GPS in the background only if permission is already granted
+      const warmUpGps = async () => {
+        try {
+          if (
+            Platform.OS === 'android' &&
+            typeof PermissionsAndroid.check === 'function'
+          ) {
+            const granted = await PermissionsAndroid.check(
+              PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            );
+            if (!granted) {
+              return;
+            }
+          } else if (Platform.OS === 'android') {
+            return;
+          }
+
+          Geolocation.setRNConfiguration({
+            skipPermissionRequests: true,
+            locationProvider: 'playServices',
+          });
+          Geolocation.getCurrentPosition(
+            () => {},
+            () => {},
+            {
+              enableHighAccuracy: true,
+              timeout: 4000,
+              maximumAge: 15000,
+            },
+          );
+        } catch {
+          // Non-critical warm-up
+        }
+      };
+
+      warmUpGps();
 
       return () => {
         isActive = false;
@@ -172,7 +217,9 @@ const HomeScreen = ({navigation}: Props) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar
+        barStyle={resolvedTheme === 'dark' ? 'light-content' : 'dark-content'}
+      />
 
       {/* Subtle top emerald ambient glow matching reference */}
       <View style={styles.ambientGlow} pointerEvents="none" />
@@ -196,6 +243,7 @@ const HomeScreen = ({navigation}: Props) => {
             onRightActionPress={showPrivacyNotice}
             profileInitials={profileInitials}
             onProfilePress={() => navigation.navigate('Profile')}
+            onMenuPress={() => setDrawerOpen(true)}
           />
 
           {/* Glowing Emerald Hero Banner */}
@@ -205,7 +253,7 @@ const HomeScreen = ({navigation}: Props) => {
                 <AppIcon
                   name={workoutType === 'Run' ? 'run' : 'walk'}
                   size={22}
-                  color={COLORS.primary}
+                  color={colors.primary}
                 />
               </View>
               <View style={styles.heroBannerText}>
@@ -287,7 +335,7 @@ const HomeScreen = ({navigation}: Props) => {
                 value={(todayDistance / 1000).toFixed(2)}
                 unit="km"
                 icon="distance"
-                accentColor={COLORS.primary}
+                accentColor={colors.primary}
                 style={styles.statCard}
               />
 
@@ -296,7 +344,7 @@ const HomeScreen = ({navigation}: Props) => {
                 value={String(todayWorkouts.length)}
                 unit={todayWorkouts.length === 1 ? 'session' : 'sessions'}
                 icon="check"
-                accentColor={COLORS.accent}
+                accentColor={colors.accent}
                 style={styles.statCard}
               />
             </View>
@@ -325,7 +373,7 @@ const HomeScreen = ({navigation}: Props) => {
 
             {isLoading ? (
               <View style={styles.loadingCard}>
-                <ActivityIndicator size="small" color={COLORS.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={styles.loadingText}>Loading recent workouts…</Text>
               </View>
             ) : workouts.length === 0 ? (
@@ -350,177 +398,209 @@ const HomeScreen = ({navigation}: Props) => {
           </View>
         </Animated.View>
       </ScrollView>
+
+      <SideDrawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        displayName={displayName}
+        email={user?.email}
+        initials={profileInitials}
+        avatarUrl={profile?.avatar_url}
+        isGuest={isGuest}
+        onNavigateHome={() => {}}
+        onNavigateProfile={() => navigation.navigate('Profile')}
+        onNavigateHistory={() => navigation.navigate('WorkoutHistory')}
+        onStartWalk={() =>
+          navigation.navigate('Workout', {workoutType: 'Walk'})
+        }
+        onStartRun={() =>
+          navigation.navigate('Workout', {workoutType: 'Run'})
+        }
+        onOpenPrivacy={showPrivacyNotice}
+        onAuthAction={async () => {
+          if (isGuest) {
+            exitGuestMode();
+            return;
+          }
+          try {
+            await signOut();
+          } catch (error: any) {
+            Alert.alert('Sign Out', error?.message || 'Unable to sign out.');
+          }
+        }}
+      />
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  ambientGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 220,
-    backgroundColor: COLORS.secondarySoft,
-    opacity: 0.75,
-    borderBottomLeftRadius: 48,
-    borderBottomRightRadius: 48,
-  },
-  scrollContent: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xxl,
-  },
-  heroBanner: {
-    backgroundColor: '#1E7E3D',
-    borderRadius: RADII.xl,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(180, 255, 42, 0.35)',
-    ...SHADOWS.floating,
-  },
-  heroBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    flex: 1,
-  },
-  heroBadgeCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroBannerText: {
-    flex: 1,
-  },
-  heroBannerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  heroBannerSubtitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(248, 250, 249, 0.85)',
-    marginTop: 2,
-  },
-  heroStartPill: {
-    backgroundColor: COLORS.textPrimary,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 10,
-    borderRadius: RADII.pill,
-  },
-  heroStartPillPressed: {
-    opacity: 0.85,
-  },
-  heroStartPillText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.textOnPrimary,
-    letterSpacing: 0.6,
-  },
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.md,
-    paddingHorizontal: 2,
-  },
-  weekDayCol: {
-    alignItems: 'center',
-    gap: 5,
-  },
-  weekDayLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  weekDayLabelToday: {
-    color: COLORS.primary,
-    fontWeight: '800',
-  },
-  weekDateCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  weekDateCircleToday: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primarySoft,
-  },
-  weekDateNum: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    fontVariant: ['tabular-nums'],
-  },
-  weekDateNumToday: {
-    color: COLORS.primary,
-    fontWeight: '800',
-  },
-  weekWorkoutDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: 'transparent',
-  },
-  weekWorkoutDotActive: {
-    backgroundColor: COLORS.accent,
-  },
-  launcherCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADII.xl,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.card,
-  },
-  startButton: {
-    marginTop: SPACING.md,
-  },
-  section: {
-    marginTop: SPACING.xl,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  statCard: {
-    flex: 1,
-  },
-  historyButton: {
-    marginTop: SPACING.md,
-  },
-  loadingCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADII.lg,
-    padding: SPACING.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  loadingText: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    ambientGlow: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 220,
+      backgroundColor: colors.secondarySoft,
+      opacity: 0.75,
+      borderBottomLeftRadius: 48,
+      borderBottomRightRadius: 48,
+    },
+    scrollContent: {
+      paddingHorizontal: SPACING.lg,
+      paddingBottom: SPACING.xxl,
+    },
+    heroBanner: {
+      backgroundColor: '#1E7E3D',
+      borderRadius: RADII.xl,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: 'rgba(180, 255, 42, 0.35)',
+      ...SHADOWS.floating,
+    },
+    heroBannerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.sm,
+      flex: 1,
+    },
+    heroBadgeCircle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    heroBannerText: {
+      flex: 1,
+    },
+    heroBannerTitle: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: '#F8FAF9',
+    },
+    heroBannerSubtitle: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: 'rgba(248, 250, 249, 0.85)',
+      marginTop: 2,
+    },
+    heroStartPill: {
+      backgroundColor: '#F8FAF9',
+      paddingHorizontal: SPACING.md,
+      paddingVertical: 10,
+      borderRadius: RADII.pill,
+    },
+    heroStartPillPressed: {
+      opacity: 0.85,
+    },
+    heroStartPillText: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: '#0A0C0B',
+      letterSpacing: 0.6,
+    },
+    weekRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: SPACING.lg,
+      marginBottom: SPACING.md,
+      paddingHorizontal: 2,
+    },
+    weekDayCol: {
+      alignItems: 'center',
+      gap: 5,
+    },
+    weekDayLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    weekDayLabelToday: {
+      color: colors.primary,
+      fontWeight: '800',
+    },
+    weekDateCircle: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    weekDateCircleToday: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primarySoft,
+    },
+    weekDateNum: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
+    },
+    weekDateNumToday: {
+      color: colors.primary,
+      fontWeight: '800',
+    },
+    weekWorkoutDot: {
+      width: 5,
+      height: 5,
+      borderRadius: 2.5,
+      backgroundColor: 'transparent',
+    },
+    weekWorkoutDotActive: {
+      backgroundColor: colors.accent,
+    },
+    launcherCard: {
+      backgroundColor: colors.surface,
+      borderRadius: RADII.xl,
+      padding: SPACING.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...SHADOWS.card,
+    },
+    startButton: {
+      marginTop: SPACING.md,
+    },
+    section: {
+      marginTop: SPACING.xl,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      gap: SPACING.sm,
+    },
+    statCard: {
+      flex: 1,
+    },
+    historyButton: {
+      marginTop: SPACING.md,
+    },
+    loadingCard: {
+      backgroundColor: colors.surface,
+      borderRadius: RADII.lg,
+      padding: SPACING.xl,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: SPACING.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    loadingText: {
+      ...TYPOGRAPHY.body,
+      color: colors.textSecondary,
+    },
+  });
 
 export default HomeScreen;

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
 
-import {COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
+import {useTheme} from '../context/ThemeContext';
+import {RADII, SHADOWS, SPACING, ThemeColors, TYPOGRAPHY} from '../theme/theme';
 import AppIcon, {AppIconName} from './AppIcon';
 import PrimaryButton from './PrimaryButton';
 
@@ -16,7 +17,7 @@ type EmptyStateProps = {
 };
 
 /**
- * Polished dark placeholder card for empty lists, missing data, or recoverable error states.
+ * Polished placeholder card for empty lists, missing data, or recoverable error states.
  */
 const EmptyState = ({
   icon = 'distance',
@@ -27,19 +28,22 @@ const EmptyState = ({
   tone = 'neutral',
   style,
 }: EmptyStateProps) => {
+  const {colors} = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const iconBg =
     tone === 'error'
-      ? COLORS.errorSoft
+      ? colors.errorSoft
       : tone === 'warning'
-      ? COLORS.warningSoft
-      : COLORS.primarySoft;
+      ? colors.warningSoft
+      : colors.primarySoft;
 
   const iconColor =
     tone === 'error'
-      ? COLORS.error
+      ? colors.error
       : tone === 'warning'
-      ? COLORS.warning
-      : COLORS.primary;
+      ? colors.warning
+      : colors.primary;
 
   return (
     <View style={[styles.container, style]}>
@@ -61,41 +65,42 @@ const EmptyState = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADII.lg,
-    paddingVertical: SPACING.xl,
-    paddingHorizontal: SPACING.lg,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.card,
-  },
-  iconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.md,
-  },
-  title: {
-    ...TYPOGRAPHY.sectionTitle,
-    textAlign: 'center',
-    color: COLORS.textPrimary,
-  },
-  description: {
-    ...TYPOGRAPHY.body,
-    textAlign: 'center',
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
-    maxWidth: 280,
-  },
-  button: {
-    marginTop: SPACING.lg,
-    alignSelf: 'stretch',
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: colors.surface,
+      borderRadius: RADII.lg,
+      paddingVertical: SPACING.xl,
+      paddingHorizontal: SPACING.lg,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...SHADOWS.card,
+    },
+    iconWrap: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: SPACING.md,
+    },
+    title: {
+      ...TYPOGRAPHY.sectionTitle,
+      textAlign: 'center',
+      color: colors.textPrimary,
+    },
+    description: {
+      ...TYPOGRAPHY.body,
+      textAlign: 'center',
+      color: colors.textSecondary,
+      marginTop: SPACING.xs,
+      maxWidth: 280,
+    },
+    button: {
+      marginTop: SPACING.lg,
+      alignSelf: 'stretch',
+    },
+  });
 
 export default EmptyState;

@@ -29,6 +29,7 @@ const mockResetPasswordForEmail = jest.fn();
 const mockGetSession = jest.fn();
 const mockSetSession = jest.fn();
 const mockOnAuthStateChange = jest.fn();
+const mockFunctionsInvoke = jest.fn();
 const mockMaybeSingle = jest.fn();
 const mockUpsertSingle = jest.fn();
 
@@ -44,6 +45,9 @@ jest.mock('../src/services/supabase', () => ({
       signOut: (...args: any[]) => mockSignOut(...args),
       resetPasswordForEmail: (...args: any[]) =>
         mockResetPasswordForEmail(...args),
+    },
+    functions: {
+      invoke: (...args: any[]) => mockFunctionsInvoke(...args),
     },
     from: () => ({
       select: () => ({
@@ -62,6 +66,7 @@ jest.mock('../src/services/supabase', () => ({
 
 import {Linking} from 'react-native';
 import {AuthProvider, useAuth} from '../src/context/AuthContext';
+import {ThemeProvider} from '../src/context/ThemeContext';
 import ForgotPasswordScreen from '../src/screens/ForgotPasswordScreen';
 import LoginScreen from '../src/screens/LoginScreen';
 import ProfileScreen from '../src/screens/ProfileScreen';
@@ -373,4 +378,174 @@ test('ProfileScreen loads authenticated user profile and supports editing', asyn
 
   expect(JSON.stringify(renderer.toJSON())).toContain('Alex Runner');
   expect(JSON.stringify(renderer.toJSON())).toContain('Profile updated.');
+});
+
+test('ProfileScreen hides Delete Account for guests and deletes authenticated account only after reauth and server confirmation', async () => {
+  // 1. Guest mode must NOT show Delete Account
+  let guestRenderer!: ReactTestRenderer.ReactTestRenderer;
+  await ReactTestRenderer.act(async () => {
+    guestRenderer = ReactTestRenderer.create(
+      <AuthProvider>
+        <ProfileScreen navigation={{goBack: jest.fn()}} />
+      </AuthProvider>,
+    );
+  });
+  expect(JSON.stringify(guestRenderer.toJSON())).not.toContain('Delete Account');
+
+  // 2. Authenticated mode shows Delete Account and requires reauth + server confirmation
+  mockGetSession.mockResolvedValueOnce({
+    data: {
+      session: {
+        user: {
+          id: 'user-del-1',
+          email: 'delete@example.com',
+          created_at: '2026-01-01T00:00:00Z',
+          user_metadata: {full_name: 'Delete Me'},
+        },
+      },
+    },
+    error: null,
+  });
+  mockMaybeSingle.mockResolvedValueOnce({
+    data: {
+      id: 'user-del-1',
+      full_name: 'Delete Me',
+      avatar_url: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    },
+    error: null,
+  });
+
+  let authState: ReturnType<typeof useAuth> | null = null;
+  const Probe = () => {
+    authState = useAuth();
+    return null;
+  };
+
+  let authRenderer!: ReactTestRenderer.ReactTestRenderer;
+  await ReactTestRenderer.act(async () => {
+    authRenderer = ReactTestRenderer.create(
+      <AuthProvider>
+        <Probe />
+        <ProfileScreen navigation={{goBack: jest.fn()}} />
+      </AuthProvider>,
+    );
+  });
+
+  expect(JSON.stringify(authRenderer.toJSON())).toContain('Delete Account');
+
+  // Failed reauth keeps session intact
+  mockSignInWithPassword.mockResolvedValueOnce({
+    data: {session: null},
+    error: {message: 'Invalid login credentials'},
+  });
+
+  await expect(authState!.deleteAccount('wrongpass')).rejects.toThrow(
+    'Invalid login credentials',
+  );
+  expect(authState!.isAuthenticated).toBe(true);
+  expect(mockFunctionsInvoke).not.toHaveBeenCalled();
+
+  // Valid reauth + server confirmation clears local session
+  mockSignInWithPassword.mockResolvedValueOnce({
+    data: {session: {access_token: 'fresh_jwt_token'}},
+    error: null,
+  });
+  mockFunctionsInvoke.mockResolvedValueOnce({
+    data: {success: true},
+    error: null,
+  });
+  mockSignOut.mockResolvedValueOnce({error: null});
+
+  await ReactTestRenderer.act(async () => {
+    await authState!.deleteAccount('correctpass');
+  });
+
+  expect(mockFunctionsInvoke).toHaveBeenCalledWith('delete-account', {
+    headers: {Authorization: 'Bearer fresh_jwt_token'},
+  });
+  expect(mockSignOut).toHaveBeenCalledWith({scope: 'local'});
+  expect(authState!.isAuthenticated).toBe(false);
+});
+
+test('deleteAccount surfaces JSON error from non-2xx Edge Function response', async () => {
+  mockGetSession.mockResolvedValueOnce({
+    data: {
+      session: {
+        user: {
+          id: 'user-del-2',
+          email: 'delete2@example.com',
+          created_at: '2026-01-01T00:00:00Z',
+          user_metadata: {full_name: 'Delete Error'},
+        },
+      },
+    },
+    error: null,
+  });
+  mockMaybeSingle.mockResolvedValueOnce({
+    data: null,
+    error: null,
+  });
+
+  let authState: ReturnType<typeof useAuth> | null = null;
+  const CaptureAuth = () => {
+    authState = useAuth();
+    return null;
+  };
+
+  await ReactTestRenderer.act(async () => {
+    ReactTestRenderer.create(
+      <AuthProvider>
+        <CaptureAuth />
+      </AuthProvider>,
+    );
+  });
+
+  mockSignInWithPassword.mockResolvedValueOnce({
+    data: {session: {access_token: 'fresh_jwt_token'}},
+    error: null,
+  });
+  mockFunctionsInvoke.mockResolvedValueOnce({
+    data: null,
+    error: {
+      message: 'Edge Function returned a non-2xx status code',
+      context: {
+        status: 500,
+        json: async () => ({error: 'Failed to delete user profile data.'}),
+      },
+    },
+  });
+
+  await expect(authState!.deleteAccount('correctpass')).rejects.toThrow(
+    'Failed to delete user profile data.',
+  );
+  expect(mockSignOut).not.toHaveBeenCalled();
+});
+
+test('ProfileScreen allows switching theme between Dark, Light, and System', async () => {
+  let renderer!: ReactTestRenderer.ReactTestRenderer;
+  await ReactTestRenderer.act(async () => {
+    renderer = ReactTestRenderer.create(
+      <ThemeProvider>
+        <AuthProvider>
+          <ProfileScreen navigation={{goBack: jest.fn()}} />
+        </AuthProvider>
+      </ThemeProvider>,
+    );
+  });
+
+  expect(JSON.stringify(renderer.toJSON())).toContain('App Theme');
+  expect(JSON.stringify(renderer.toJSON())).toContain('Dark Active');
+
+  const lightBtn = renderer.root
+    .findAllByProps({accessibilityRole: 'button'})
+    .find(node => node.props.accessibilityLabel === 'Theme Light');
+  expect(lightBtn).toBeDefined();
+
+  await ReactTestRenderer.act(async () => {
+    lightBtn!.props.onPress();
+  });
+
+  expect(JSON.stringify(renderer.toJSON())).toContain('Light Active');
 });

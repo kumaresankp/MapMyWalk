@@ -1,7 +1,8 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
 
-import {COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
+import {useTheme} from '../context/ThemeContext';
+import {RADII, SHADOWS, SPACING, ThemeColors, TYPOGRAPHY} from '../theme/theme';
 import AppIcon, {AppIconName} from './AppIcon';
 
 type StatCardProps = {
@@ -15,17 +16,21 @@ type StatCardProps = {
 };
 
 /**
- * Reference-styled dark metric card with colored top icon badge and bold tabular value.
+ * Reference-styled metric card with colored top icon badge and bold tabular value.
  */
 const StatCard = ({
   label,
   value,
   unit,
   icon,
-  accentColor = COLORS.primary,
+  accentColor,
   style,
   compact = false,
 }: StatCardProps) => {
+  const {colors} = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const resolvedAccent = accentColor ?? colors.primary;
+
   return (
     <View style={[styles.card, compact && styles.cardCompact, style]}>
       <View style={styles.topRow}>
@@ -33,9 +38,9 @@ const StatCard = ({
           <View
             style={[
               styles.iconBadge,
-              {backgroundColor: `${accentColor}22`},
+              {backgroundColor: `${resolvedAccent}22`},
             ]}>
-            <AppIcon name={icon} size={15} color={accentColor} />
+            <AppIcon name={icon} size={15} color={resolvedAccent} />
           </View>
         ) : null}
         <Text style={styles.label} numberOfLines={1}>
@@ -56,55 +61,56 @@ const StatCard = ({
   );
 };
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADII.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.card,
-  },
-  cardCompact: {
-    padding: SPACING.sm,
-    borderRadius: RADII.md,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-    marginBottom: SPACING.xs,
-  },
-  iconBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: {
-    ...TYPOGRAPHY.overline,
-    color: COLORS.textSecondary,
-    flex: 1,
-  },
-  valueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  value: {
-    ...TYPOGRAPHY.statValue,
-    fontSize: 22,
-    color: COLORS.textPrimary,
-  },
-  valueCompact: {
-    fontSize: 18,
-  },
-  unit: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: RADII.lg,
+      padding: SPACING.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...SHADOWS.card,
+    },
+    cardCompact: {
+      padding: SPACING.sm,
+      borderRadius: RADII.md,
+    },
+    topRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.xs,
+      marginBottom: SPACING.xs,
+    },
+    iconBadge: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    label: {
+      ...TYPOGRAPHY.overline,
+      color: colors.textSecondary,
+      flex: 1,
+    },
+    valueRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 4,
+    },
+    value: {
+      ...TYPOGRAPHY.statValue,
+      fontSize: 22,
+      color: colors.textPrimary,
+    },
+    valueCompact: {
+      fontSize: 18,
+    },
+    unit: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+  });
 
 export default StatCard;

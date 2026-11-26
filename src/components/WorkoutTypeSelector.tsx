@@ -1,8 +1,9 @@
-import React, {useRef} from 'react';
+import React, {useMemo, useRef} from 'react';
 import {Animated, Pressable, StyleSheet, Text, View} from 'react-native';
 
+import {useTheme} from '../context/ThemeContext';
 import {WorkoutType} from '../types/Workout';
-import {COLORS, RADII, SHADOWS, SPACING} from '../theme/theme';
+import {RADII, SHADOWS, SPACING, ThemeColors} from '../theme/theme';
 import AppIcon from './AppIcon';
 
 type WorkoutTypeSelectorProps = {
@@ -10,36 +11,29 @@ type WorkoutTypeSelectorProps = {
   onChange: (type: WorkoutType) => void;
 };
 
-const OPTIONS: {
+type TypeOption = {
   type: WorkoutType;
   title: string;
   subtitle: string;
   icon: 'walk' | 'run';
   accent: string;
-}[] = [
-  {
-    type: 'Walk',
-    title: 'Walk',
-    subtitle: 'Steady outdoor pace',
-    icon: 'walk',
-    accent: COLORS.primary,
-  },
-  {
-    type: 'Run',
-    title: 'Run',
-    subtitle: 'High-tempo cardio',
-    icon: 'run',
-    accent: COLORS.coral,
-  },
-];
-
-type TypeCardProps = {
-  option: (typeof OPTIONS)[number];
-  selected: boolean;
-  onSelect: () => void;
 };
 
-const TypeCard = ({option, selected, onSelect}: TypeCardProps) => {
+type TypeCardProps = {
+  option: TypeOption;
+  selected: boolean;
+  onSelect: () => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
+};
+
+const TypeCard = ({
+  option,
+  selected,
+  onSelect,
+  colors,
+  styles,
+}: TypeCardProps) => {
   const scale = useRef(new Animated.Value(1)).current;
 
   const animateTo = (toValue: number) => {
@@ -79,7 +73,7 @@ const TypeCard = ({option, selected, onSelect}: TypeCardProps) => {
             <AppIcon
               name={option.icon}
               size={20}
-              color={selected ? COLORS.textOnPrimary : COLORS.textPrimary}
+              color={selected ? colors.textOnPrimary : colors.textPrimary}
             />
           </View>
 
@@ -91,7 +85,7 @@ const TypeCard = ({option, selected, onSelect}: TypeCardProps) => {
                 : styles.radioOuterUnselected,
             ]}>
             {selected ? (
-              <AppIcon name="check" size={11} color={COLORS.textOnPrimary} />
+              <AppIcon name="check" size={11} color={colors.textOnPrimary} />
             ) : null}
           </View>
         </View>
@@ -100,7 +94,7 @@ const TypeCard = ({option, selected, onSelect}: TypeCardProps) => {
         <Text
           style={[
             styles.cardSubtitle,
-            selected && {color: COLORS.textPrimary},
+            selected && {color: colors.textPrimary},
           ]}
           numberOfLines={1}>
           {option.subtitle}
@@ -111,86 +105,112 @@ const TypeCard = ({option, selected, onSelect}: TypeCardProps) => {
 };
 
 /**
- * Reference-inspired dark pill-card selector for Walk and Run.
+ * Reference-inspired pill-card selector for Walk and Run.
  */
 const WorkoutTypeSelector = ({value, onChange}: WorkoutTypeSelectorProps) => {
+  const {colors} = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const options: TypeOption[] = useMemo(
+    () => [
+      {
+        type: 'Walk',
+        title: 'Walk',
+        subtitle: 'Steady outdoor pace',
+        icon: 'walk',
+        accent: colors.primary,
+      },
+      {
+        type: 'Run',
+        title: 'Run',
+        subtitle: 'High-tempo cardio',
+        icon: 'run',
+        accent: colors.coral,
+      },
+    ],
+    [colors],
+  );
+
   return (
     <View style={styles.row}>
-      {OPTIONS.map(option => (
+      {options.map(option => (
         <TypeCard
           key={option.type}
           option={option}
           selected={value === option.type}
           onSelect={() => onChange(option.type)}
+          colors={colors}
+          styles={styles}
         />
       ))}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  cardWrapper: {
-    flex: 1,
-  },
-  card: {
-    borderRadius: RADII.lg,
-    padding: SPACING.md,
-    borderWidth: 1.5,
-    minHeight: 112,
-    justifyContent: 'space-between',
-    ...SHADOWS.card,
-  },
-  cardSelected: {
-    backgroundColor: COLORS.surfaceElevated,
-  },
-  cardUnselected: {
-    backgroundColor: COLORS.surface,
-    borderColor: COLORS.border,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconCircleUnselected: {
-    backgroundColor: COLORS.surfaceElevated,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  radioOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-  },
-  radioOuterUnselected: {
-    borderColor: COLORS.border,
-  },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  cardSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      gap: SPACING.sm,
+    },
+    cardWrapper: {
+      flex: 1,
+    },
+    card: {
+      borderRadius: RADII.lg,
+      padding: SPACING.md,
+      borderWidth: 1.5,
+      minHeight: 112,
+      justifyContent: 'space-between',
+      ...SHADOWS.card,
+    },
+    cardSelected: {
+      backgroundColor: colors.surfaceElevated,
+    },
+    cardUnselected: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+    },
+    cardTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: SPACING.sm,
+    },
+    iconCircle: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconCircleUnselected: {
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    radioOuter: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1.5,
+    },
+    radioOuterUnselected: {
+      borderColor: colors.border,
+    },
+    cardTitle: {
+      fontSize: 17,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
+    cardSubtitle: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+  });
 
 export default WorkoutTypeSelector;

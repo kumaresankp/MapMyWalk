@@ -80,3 +80,7 @@ CREATE POLICY "Users can update their own profile"
   TO authenticated
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
+
+-- 6. Ensure service_role has full privileges (used by delete-account Edge Function)
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT ALL ON TABLE public.profiles TO service_role;

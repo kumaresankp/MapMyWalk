@@ -1,9 +1,10 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 
+import {useTheme} from '../context/ThemeContext';
 import {StoredWorkout} from '../types/Workout';
 import {formatDuration, formatPace} from '../theme/formatters';
-import {COLORS, RADII, SHADOWS, SPACING} from '../theme/theme';
+import {RADII, SHADOWS, SPACING, ThemeColors} from '../theme/theme';
 import AppIcon from './AppIcon';
 
 type WorkoutCardProps = {
@@ -13,16 +14,18 @@ type WorkoutCardProps = {
 };
 
 /**
- * Reference-styled dark activity card with circular glowing activity icon and tabular metrics.
+ * Reference-styled activity card with circular activity icon and tabular metrics.
  */
 const WorkoutCard = ({
   workout,
   onPress,
   showPace = true,
 }: WorkoutCardProps) => {
+  const {colors} = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isRun = workout.workoutType === 'Run';
-  const accentColor = isRun ? COLORS.coral : COLORS.primary;
-  const ringBg = isRun ? COLORS.coralSoft : COLORS.primarySoft;
+  const accentColor = isRun ? colors.coral : colors.primary;
+  const ringBg = isRun ? colors.coralSoft : colors.primarySoft;
 
   const paceValue = formatPace(
     workout.averagePace ?? workout.paceSecondsPerKm ?? null,
@@ -100,119 +103,120 @@ const WorkoutCard = ({
         <View style={styles.divider} />
         <View style={styles.detailsPill}>
           <Text style={styles.detailsText}>Details</Text>
-          <AppIcon name="chevronRight" size={13} color={COLORS.primary} />
+          <AppIcon name="chevronRight" size={13} color={colors.primary} />
         </View>
       </View>
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADII.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.card,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
-    gap: SPACING.sm,
-  },
-  leftIdentity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    flex: 1,
-  },
-  typeCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  identityText: {
-    flex: 1,
-  },
-  typeTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  dateText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  rightHero: {
-    alignItems: 'flex-end',
-  },
-  heroDistance: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    fontVariant: ['tabular-nums'],
-  },
-  heroUnit: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceElevated,
-    borderRadius: RADII.md,
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.sm,
-  },
-  metricItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  metricValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    fontVariant: ['tabular-nums'],
-  },
-  metricUnit: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  metricLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: 2,
-  },
-  divider: {
-    width: 1,
-    height: 22,
-    backgroundColor: COLORS.border,
-  },
-  detailsPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: SPACING.sm,
-  },
-  detailsText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: RADII.lg,
+      padding: SPACING.md,
+      marginBottom: SPACING.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...SHADOWS.card,
+    },
+    topRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: SPACING.sm,
+      gap: SPACING.sm,
+    },
+    leftIdentity: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.sm,
+      flex: 1,
+    },
+    typeCircle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    identityText: {
+      flex: 1,
+    },
+    typeTitle: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
+    dateText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    rightHero: {
+      alignItems: 'flex-end',
+    },
+    heroDistance: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
+    },
+    heroUnit: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    metricsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: RADII.md,
+      paddingVertical: SPACING.xs,
+      paddingHorizontal: SPACING.sm,
+    },
+    metricItem: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    metricValue: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
+    },
+    metricUnit: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    metricLabel: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginTop: 2,
+    },
+    divider: {
+      width: 1,
+      height: 22,
+      backgroundColor: colors.border,
+    },
+    detailsPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      paddingHorizontal: SPACING.sm,
+    },
+    detailsText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+  });
 
 export default WorkoutCard;

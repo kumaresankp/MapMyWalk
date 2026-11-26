@@ -8,7 +8,8 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import {COLORS, RADII, SPACING} from '../theme/theme';
+import {useTheme} from '../context/ThemeContext';
+import {RADII, SPACING} from '../theme/theme';
 import AppIcon, {AppIconName} from './AppIcon';
 
 type SecondaryButtonProps = {
@@ -20,7 +21,7 @@ type SecondaryButtonProps = {
 };
 
 /**
- * Medium-emphasis dark pill button for secondary actions and controls.
+ * Medium-emphasis pill button for secondary actions and controls.
  */
 const SecondaryButton = ({
   label,
@@ -29,6 +30,7 @@ const SecondaryButton = ({
   tone = 'primary',
   style,
 }: SecondaryButtonProps) => {
+  const {colors} = useTheme();
   const scale = useRef(new Animated.Value(1)).current;
 
   const animateTo = (value: number) => {
@@ -43,26 +45,26 @@ const SecondaryButton = ({
   const palette =
     tone === 'danger'
       ? {
-          bg: COLORS.errorSoft,
+          bg: colors.errorSoft,
           border: 'rgba(255, 77, 79, 0.35)',
-          text: COLORS.errorDark,
+          text: colors.errorDark,
         }
       : tone === 'warning'
       ? {
-          bg: COLORS.warningSoft,
+          bg: colors.warningSoft,
           border: 'rgba(255, 176, 32, 0.35)',
-          text: COLORS.warningDark,
+          text: colors.warningDark,
         }
       : tone === 'neutral'
       ? {
-          bg: COLORS.surfaceElevated,
-          border: COLORS.border,
-          text: COLORS.textPrimary,
+          bg: colors.surfaceElevated,
+          border: colors.border,
+          text: colors.textPrimary,
         }
       : {
-          bg: COLORS.primarySoft,
-          border: COLORS.primaryMuted,
-          text: COLORS.primary,
+          bg: colors.primarySoft,
+          border: colors.primaryMuted,
+          text: colors.primary,
         };
 
   return (

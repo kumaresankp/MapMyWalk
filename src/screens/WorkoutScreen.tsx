@@ -271,11 +271,12 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
 
     const startWorkout = async () => {
       /*
-       * Configure Android location provider
+       * Configure Android location provider (uses FusedLocationProvider when available,
+       * automatically falling back to AndroidLocationManager otherwise)
        */
       Geolocation.setRNConfiguration({
         skipPermissionRequests: true,
-        locationProvider: 'android',
+        locationProvider: 'playServices',
       });
 
       console.log('Geolocation configured');
@@ -306,7 +307,8 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
       }, 1000);
 
       /*
-       * Get immediate location
+       * Fast initial location (reuses recent valid cached fix if available)
+       * while continuous high-accuracy watchPosition starts immediately in parallel
        */
       console.log('REQUESTING CURRENT LOCATION...');
 
@@ -318,45 +320,29 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
             position.coords.longitude,
           );
 
-          processGPSPosition(position);
-
-          // Get a fresh high-accuracy position afterward
-          Geolocation.getCurrentPosition(
-            freshPosition => {
-              console.log(
-                'FRESH HIGH ACCURACY LOCATION:',
-                freshPosition.coords.latitude,
-                freshPosition.coords.longitude,
-              );
-
-              processGPSPosition(freshPosition);
-            },
-            error => {
-              console.log(
-                'HIGH ACCURACY ERROR:',
-                error.code,
-                error.message,
-              );
-            },
-            {
-              enableHighAccuracy: true,
-              timeout: 15000,
-              maximumAge: 5000,
-            },
-          );
+          processGPSPosition(position, {allowCachedPreview: true});
         },
         error => {
           console.log('INITIAL LOCATION ERROR:', error.code, error.message);
+          if (!lastPointRef.current && error.code === 2) {
+            setLocationError(
+              'GPS appears to be turned off. Please enable Location Services in your device settings.',
+            );
+          } else if (!lastPointRef.current && error.code === 3) {
+            setLocationError(
+              'GPS lock is taking longer than usual. Move to an open area while we keep searching.',
+            );
+          }
         },
         {
           enableHighAccuracy: false,
-          timeout: 10000,
-          maximumAge: 30000,
+          timeout: 4000,
+          maximumAge: CACHED_PREVIEW_MAX_AGE_MS,
         },
       );
 
       /*
-       * Start continuous GPS tracking
+       * Start continuous high-accuracy GPS tracking immediately in parallel
        */
       console.log('STARTING GPS WATCH...');
 
@@ -366,6 +352,11 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
         },
         error => {
           console.log('WATCH LOCATION ERROR:', error.code, error.message);
+          if (!lastPointRef.current && error.code === 2) {
+            setLocationError(
+              'GPS appears to be turned off. Please enable Location Services in your device settings.',
+            );
+          }
         },
         {
           enableHighAccuracy: true,
@@ -637,10 +628,11 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
             </View>
           </View>
 
-          <Text style={styles.locationLoadingTitle}>Finding Your Location</Text>
+          <Text style={styles.locationLoadingTitle}>Getting your location...</Text>
 
           <Text style={styles.locationLoadingText}>
-            Waiting for a precise GPS lock before starting your {workoutType.toLowerCase()} route.
+            {locationError ??
+              `Waiting for a fast GPS lock before starting your ${workoutType.toLowerCase()} route.`}
           </Text>
 
           <View style={styles.locationTipCard}>
@@ -772,6 +764,15 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
           <View style={styles.mapStatusPill}>
             <ActivityIndicator size="small" color={COLORS.primary} />
             <Text style={styles.mapStatusText}>Loading map…</Text>
+          </View>
+        ) : null}
+
+        {isRefiningInitialFix && !mapError ? (
+          <View style={styles.refiningBanner}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <Text style={styles.refiningText}>
+              Refining GPS accuracy before recording route…
+            </Text>
           </View>
         ) : null}
 
@@ -949,6 +950,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: COLORS.textSecondary,
+  },
+  refiningBanner: {
+    position: 'absolute',
+    bottom: SPACING.sm,
+    left: SPACING.sm,
+    right: SPACING.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    backgroundColor: COLORS.overlayDark,
+    borderWidth: 1,
+    borderColor: COLORS.primaryMuted,
+    borderRadius: RADII.md,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+  },
+  refiningText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   mapErrorBanner: {
     position: 'absolute',

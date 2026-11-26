@@ -33,6 +33,7 @@ type AuthContextValue = {
     password: string,
   ) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (updates: UpdateProfileInput) => Promise<UserProfile>;
   refreshProfile: () => Promise<void>;
@@ -328,6 +329,90 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
     setIsGuest(false);
   }, []);
 
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      if (!isSupabaseConfigured) {
+        throw new Error(NOT_CONFIGURED_MESSAGE);
+      }
+      const userEmail = session?.user?.email;
+      if (!userEmail) {
+        throw new Error('You must be signed in to delete your account.');
+      }
+      if (!password) {
+        throw new Error('Please enter your current password to confirm.');
+      }
+
+      try {
+        // Reauthenticate to verify identity and obtain a fresh access token
+        const {data: reauthData, error: reauthError} =
+          await supabase.auth.signInWithPassword({
+            email: userEmail,
+            password,
+          });
+
+        if (reauthError || !reauthData.session?.access_token) {
+          throw new Error(
+            reauthError?.message || 'Incorrect password. Reauthentication failed.',
+          );
+        }
+
+        // Invoke server-side Edge Function using the verified user's JWT
+        const {data: fnData, error: fnError} =
+          await supabase.functions.invoke('delete-account', {
+            headers: {
+              Authorization: `Bearer ${reauthData.session.access_token}`,
+            },
+          });
+
+        if (fnError || !fnData?.success) {
+          let serverErrorMessage = fnData?.error;
+          if (!serverErrorMessage && fnError) {
+            const errorContext = (fnError as {context?: Response}).context;
+            if (errorContext && typeof errorContext.json === 'function') {
+              try {
+                const readable =
+                  typeof errorContext.clone === 'function'
+                    ? errorContext.clone()
+                    : errorContext;
+                const body = await readable.json();
+                if (typeof body?.error === 'string' && body.error) {
+                  serverErrorMessage = body.error;
+                }
+              } catch {
+                // Response body wasn't JSON
+              }
+            }
+            if (!serverErrorMessage && errorContext?.status === 404) {
+              serverErrorMessage =
+                'Account deletion service is not deployed on the server (404).';
+            }
+          }
+          throw new Error(
+            serverErrorMessage ||
+              fnError?.message ||
+              'Unable to delete account on the server.',
+          );
+        }
+
+        // Clear local auth session only after server confirmation
+        try {
+          await supabase.auth.signOut({scope: 'local'});
+        } catch {
+          // Ensure React auth state is cleared even if local signOut throws
+        }
+        setSession(null);
+        setProfile(null);
+        setIsGuest(false);
+      } catch (error) {
+        throw formatAuthError(
+          error,
+          'Unable to delete your account. Please try again.',
+        );
+      }
+    },
+    [session],
+  );
+
   const resetPassword = useCallback(async (email: string) => {
     if (!isSupabaseConfigured) {
       throw new Error(NOT_CONFIGURED_MESSAGE);
@@ -389,6 +474,7 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
       signIn,
       signUp,
       signOut,
+      deleteAccount,
       resetPassword,
       updateProfile,
       refreshProfile,
@@ -404,6 +490,7 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
       signIn,
       signUp,
       signOut,
+      deleteAccount,
       resetPassword,
       updateProfile,
       refreshProfile,

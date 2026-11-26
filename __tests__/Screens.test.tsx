@@ -130,8 +130,9 @@ test('HomeScreen renders MyWalkMap branding and allows Walk/Run selection and St
 
 test('WorkoutScreen renders GPS searching state and active map telemetry with Pause/Resume', async () => {
   jest
-    .spyOn(PermissionsAndroid, 'request')
-    .mockResolvedValue(PermissionsAndroid.RESULTS.GRANTED);
+    .spyOn(PermissionsAndroid, 'check')
+    .mockResolvedValue(true);
+  const requestSpy = jest.spyOn(PermissionsAndroid, 'request');
 
   (Geolocation.getCurrentPosition as jest.Mock).mockImplementation(success => {
     success({
@@ -142,7 +143,7 @@ test('WorkoutScreen renders GPS searching state and active map telemetry with Pa
         altitude: 10,
         speed: 1.5,
       },
-      timestamp: 1700000000000,
+      timestamp: Date.now(),
     });
   });
 
@@ -157,6 +158,8 @@ test('WorkoutScreen renders GPS searching state and active map telemetry with Pa
     );
   });
 
+  expect(requestSpy).not.toHaveBeenCalled();
+
   const activeJson = JSON.stringify(renderer.toJSON());
   expect(activeJson).toContain('Walk');
   expect(activeJson).toContain('Tracking');
@@ -169,6 +172,67 @@ test('WorkoutScreen renders GPS searching state and active map telemetry with Pa
 
   expect(JSON.stringify(renderer.toJSON())).toContain('Paused');
   expect(JSON.stringify(renderer.toJSON())).toContain('Resume');
+
+  await ReactTestRenderer.act(async () => {
+    renderer.unmount();
+  });
+});
+
+test('WorkoutScreen uses recent cached fix for preview without recording inaccurate points', async () => {
+  jest.spyOn(PermissionsAndroid, 'check').mockResolvedValue(true);
+
+  let watchCallback: ((pos: any) => void) | undefined;
+  (Geolocation.watchPosition as jest.Mock).mockImplementation(cb => {
+    watchCallback = cb;
+    return 2;
+  });
+
+  (Geolocation.getCurrentPosition as jest.Mock).mockImplementation(success => {
+    success({
+      coords: {
+        latitude: 37.7749,
+        longitude: -122.4194,
+        accuracy: 65, // Inaccurate cached point (>30m, <=100m)
+        altitude: null,
+        speed: null,
+      },
+      timestamp: Date.now() - 20000,
+    });
+  });
+
+  let renderer!: ReactTestRenderer.ReactTestRenderer;
+
+  await ReactTestRenderer.act(async () => {
+    renderer = ReactTestRenderer.create(
+      <WorkoutScreen
+        route={{params: {workoutType: 'Run'}}}
+        navigation={{goBack: jest.fn(), navigate: jest.fn()}}
+      />,
+    );
+  });
+
+  // Map is shown immediately using preview, but 0 GPS points are recorded
+  const previewJson = JSON.stringify(renderer.toJSON());
+  expect(previewJson).toContain('Refining GPS accuracy before recording route');
+  expect(previewJson).toContain('0');
+
+  // Fresh high-accuracy GPS fix arrives
+  await ReactTestRenderer.act(async () => {
+    watchCallback?.({
+      coords: {
+        latitude: 37.775,
+        longitude: -122.4195,
+        accuracy: 8,
+        altitude: 12,
+        speed: 2.5,
+      },
+      timestamp: Date.now(),
+    });
+  });
+
+  const lockedJson = JSON.stringify(renderer.toJSON());
+  expect(lockedJson).not.toContain('Refining GPS accuracy before recording route');
+  expect(lockedJson).toContain('GPS Strong');
 
   await ReactTestRenderer.act(async () => {
     renderer.unmount();

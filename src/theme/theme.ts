@@ -1,6 +1,45 @@
 import {Platform, TextStyle, ViewStyle} from 'react-native';
 
-export const COLORS = {
+export type ThemeMode = 'dark' | 'light' | 'system';
+export type ResolvedTheme = 'dark' | 'light';
+
+export type ThemeColors = {
+  primary: string;
+  primaryDark: string;
+  primarySoft: string;
+  primaryMuted: string;
+  secondary: string;
+  secondarySoft: string;
+  accent: string;
+  accentSoft: string;
+  coral: string;
+  coralSoft: string;
+  mapRoute: string;
+  background: string;
+  surface: string;
+  surfaceElevated: string;
+  surfaceSubtle: string;
+  overlayLight: string;
+  overlayDark: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  textOnPrimary: string;
+  textOnDark: string;
+  border: string;
+  borderSubtle: string;
+  success: string;
+  successSoft: string;
+  successDark: string;
+  warning: string;
+  warningSoft: string;
+  warningDark: string;
+  error: string;
+  errorSoft: string;
+  errorDark: string;
+};
+
+export const DARK_COLORS: ThemeColors = {
   // Reference Dark Obsidian + Electric Lime + Emerald Palette
   primary: '#B4FF2A', // Electric Lime (Primary CTA, active pills, highlights)
   primaryDark: '#8EE014',
@@ -49,7 +88,58 @@ export const COLORS = {
   error: '#FF4D4F',
   errorSoft: 'rgba(255, 77, 79, 0.15)',
   errorDark: '#FF8587',
-} as const;
+};
+
+export const LIGHT_COLORS: ThemeColors = {
+  primary: '#4B9400',
+  primaryDark: '#3B7800',
+  primarySoft: 'rgba(75, 148, 0, 0.12)',
+  primaryMuted: 'rgba(75, 148, 0, 0.32)',
+
+  secondary: '#DFF2E5',
+  secondarySoft: '#EDF7F0',
+
+  accent: '#16A34A',
+  accentSoft: 'rgba(22, 163, 74, 0.12)',
+
+  coral: '#EA580C',
+  coralSoft: 'rgba(234, 88, 12, 0.12)',
+
+  mapRoute: '#1677FF',
+
+  background: '#F4F7F5',
+  surface: '#FFFFFF',
+  surfaceElevated: '#EBF0EC',
+  surfaceSubtle: '#F0F4F1',
+  overlayLight: 'rgba(255, 255, 255, 0.94)',
+  overlayDark: 'rgba(15, 23, 18, 0.72)',
+
+  textPrimary: '#0F1712',
+  textSecondary: '#4B5951',
+  textMuted: '#7B8881',
+  textOnPrimary: '#FFFFFF',
+  textOnDark: '#F8FAF9',
+
+  border: '#D6E0DA',
+  borderSubtle: '#E5ECE7',
+
+  success: '#16A34A',
+  successSoft: 'rgba(22, 163, 74, 0.12)',
+  successDark: '#15803D',
+
+  warning: '#D97706',
+  warningSoft: 'rgba(217, 119, 6, 0.12)',
+  warningDark: '#B45309',
+
+  error: '#DC2626',
+  errorSoft: 'rgba(220, 38, 38, 0.10)',
+  errorDark: '#B91C1C',
+};
+
+export const getThemeColors = (resolvedTheme: ResolvedTheme): ThemeColors =>
+  resolvedTheme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+
+export const COLORS = DARK_COLORS;
 
 export const SPACING = {
   xxs: 4,
