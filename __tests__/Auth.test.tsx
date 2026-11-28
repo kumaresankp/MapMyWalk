@@ -65,6 +65,7 @@ jest.mock('../src/services/supabase', () => ({
 }));
 
 import {Linking} from 'react-native';
+import {authConfig} from '../src/config/authConfig';
 import {AuthProvider, useAuth} from '../src/context/AuthContext';
 import {ThemeProvider} from '../src/context/ThemeContext';
 import ForgotPasswordScreen from '../src/screens/ForgotPasswordScreen';
@@ -159,7 +160,94 @@ test('LoginScreen handles valid login and invalid credentials error', async () =
   expect(JSON.stringify(renderer.toJSON())).toContain('Invalid login credentials');
 });
 
-test('SignUpScreen displays email verification notice when confirmation is required', async () => {
+test('SignUpScreen immediately authenticates user when requireEmailVerification is false', async () => {
+  const originalFlag = authConfig.requireEmailVerification;
+  authConfig.requireEmailVerification = false;
+
+  const newSession = {
+    access_token: 'signup_jwt',
+    user: {
+      id: 'user-new-1',
+      email: 'alex@example.com',
+      user_metadata: {full_name: 'Alex Morgan'},
+    },
+  };
+  mockSignUp.mockResolvedValueOnce({
+    data: {user: newSession.user, session: newSession},
+    error: null,
+  });
+  mockMaybeSingle.mockResolvedValueOnce({
+    data: {
+      id: 'user-new-1',
+      full_name: 'Alex Morgan',
+      avatar_url: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    },
+    error: null,
+  });
+
+  let authState: ReturnType<typeof useAuth> | null = null;
+  const Probe = () => {
+    authState = useAuth();
+    return null;
+  };
+
+  let renderer!: ReactTestRenderer.ReactTestRenderer;
+  await ReactTestRenderer.act(async () => {
+    renderer = ReactTestRenderer.create(
+      <AuthProvider>
+        <Probe />
+        <SignUpScreen navigation={{goBack: jest.fn(), replace: jest.fn()}} />
+      </AuthProvider>,
+    );
+  });
+
+  await ReactTestRenderer.act(async () => {
+    renderer.root
+      .findByProps({placeholder: 'Alex Morgan'})
+      .props.onChangeText('Alex Morgan');
+    renderer.root
+      .findByProps({placeholder: 'you@example.com'})
+      .props.onChangeText('alex@example.com');
+    renderer.root
+      .findByProps({placeholder: 'At least 6 characters'})
+      .props.onChangeText('secret123');
+    renderer.root
+      .findByProps({placeholder: 'Re-enter your password'})
+      .props.onChangeText('secret123');
+  });
+
+  const submitBtn = renderer.root
+    .findAllByProps({accessibilityRole: 'button'})
+    .find(node => node.props.accessibilityLabel === 'Create Account');
+
+  await ReactTestRenderer.act(async () => {
+    await submitBtn!.props.onPress();
+  });
+
+  expect(mockSignUp).toHaveBeenCalledWith({
+    email: 'alex@example.com',
+    password: 'secret123',
+    options: {
+      data: {
+        full_name: 'Alex Morgan',
+      },
+    },
+  });
+  expect(authState!.isAuthenticated).toBe(true);
+  expect(authState!.profile?.full_name).toBe('Alex Morgan');
+  const tree = JSON.stringify(renderer.toJSON());
+  expect(tree).toContain('Account created successfully!');
+  expect(tree).not.toContain('Check your email');
+
+  authConfig.requireEmailVerification = originalFlag;
+});
+
+test('SignUpScreen displays email verification notice when requireEmailVerification is true and no session is returned', async () => {
+  const originalFlag = authConfig.requireEmailVerification;
+  authConfig.requireEmailVerification = true;
+
   mockSignUp.mockResolvedValueOnce({
     data: {user: {id: 'user-1'}, session: null},
     error: null,
@@ -208,6 +296,8 @@ test('SignUpScreen displays email verification notice when confirmation is requi
     },
   });
   expect(JSON.stringify(renderer.toJSON())).toContain('Check your email');
+
+  authConfig.requireEmailVerification = originalFlag;
 });
 
 test('AuthProvider establishes session from cold-start and runtime mywalkmap://auth/callback deep links', async () => {

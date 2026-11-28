@@ -1,7 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   PermissionsAndroid,
   Platform,
@@ -27,6 +26,7 @@ import Geolocation, {
 } from '@react-native-community/geolocation';
 
 import {
+  AppDialog,
   AppIcon,
   GPSQualityIndicator,
   SecondaryButton,
@@ -287,13 +287,7 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
       const permission = await requestLocationPermission();
 
       if (!permission) {
-        Alert.alert(
-          'Location Permission Required',
-          'Please allow location permission to track your workout.',
-        );
-
-        navigation.goBack();
-
+        setPermissionDialogVisible(true);
         return;
       }
 
@@ -484,83 +478,76 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
     };
   }, [routeCoordinates]);
 
+  const [permissionDialogVisible, setPermissionDialogVisible] = useState(false);
+  const [finishDialogVisible, setFinishDialogVisible] = useState(false);
+  const [saveErrorVisible, setSaveErrorVisible] = useState(false);
+
   /*
    * Finish
    */
   const finishWorkout = () => {
-    Alert.alert(
-      'Finish Workout?',
-      'Are you sure you want to finish this workout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Finish',
-          onPress: async () => {
-            try {
-              /*
-               * Stop GPS
-               */
-              if (watchIdRef.current !== null) {
-                Geolocation.clearWatch(watchIdRef.current);
+    setFinishDialogVisible(true);
+  };
 
-                watchIdRef.current = null;
-              }
+  const confirmFinishWorkout = async () => {
+    setFinishDialogVisible(false);
+    try {
+      /*
+       * Stop GPS
+       */
+      if (watchIdRef.current !== null) {
+        Geolocation.clearWatch(watchIdRef.current);
 
-              let averagePace = null;
-              if (distance > 0) {
-                const distanceKm = distance / 1000;
-                averagePace = elapsedTime / distanceKm;
-              }
+        watchIdRef.current = null;
+      }
 
-              const calories = estimateCalories({
-                workoutType,
-                durationSeconds: elapsedTime,
-                distanceMeters: distance,
-                weightKg: 70,
-                gpsPoints,
-              });
+      let averagePace = null;
+      if (distance > 0) {
+        const distanceKm = distance / 1000;
+        averagePace = elapsedTime / distanceKm;
+      }
 
-              const elevationGain = calculateElevationGain(gpsPoints);
+      const calories = estimateCalories({
+        workoutType,
+        durationSeconds: elapsedTime,
+        distanceMeters: distance,
+        weightKg: 70,
+        gpsPoints,
+      });
 
-              const workoutId = `workout_${Date.now()}`;
+      const elevationGain = calculateElevationGain(gpsPoints);
 
-              const workout: StoredWorkout = {
-                id: workoutId,
-                workoutType,
-                startedAt: startedAtRef.current,
-                finishedAt: Date.now(),
-                elapsedTime,
-                distance,
-                gpsPointCount: gpsPoints.length,
-                averagePace,
-                paceSecondsPerKm: averagePace,
-                calories,
-                elevationGain,
-              };
+      const workoutId = `workout_${Date.now()}`;
 
-              await saveWorkout(workout, gpsPoints);
+      const workout: StoredWorkout = {
+        id: workoutId,
+        workoutType,
+        startedAt: startedAtRef.current,
+        finishedAt: Date.now(),
+        elapsedTime,
+        distance,
+        gpsPointCount: gpsPoints.length,
+        averagePace,
+        paceSecondsPerKm: averagePace,
+        calories,
+        elevationGain,
+      };
 
-              navigation.navigate('WorkoutSummary', {
-                workoutType,
-                distance,
-                elapsedTime,
-                gpsPoints,
-                calories,
-                elevationGain,
-                averagePace,
-              });
-            } catch (error) {
-              console.log('FINISH WORKOUT ERROR:', error);
+      await saveWorkout(workout, gpsPoints);
 
-              Alert.alert('Error', 'Could not save the workout.');
-            }
-          },
-        },
-      ],
-    );
+      navigation.navigate('WorkoutSummary', {
+        workoutType,
+        distance,
+        elapsedTime,
+        gpsPoints,
+        calories,
+        elevationGain,
+        averagePace,
+      });
+    } catch (error) {
+      console.log('FINISH WORKOUT ERROR:', error);
+      setSaveErrorVisible(true);
+    }
   };
 
   const calculateBearing = (previous: GPSPoint, current: GPSPoint) => {
@@ -867,6 +854,41 @@ const WorkoutScreen = ({route, navigation}: WorkoutScreenProps) => {
           </Pressable>
         </View>
       </View>
+
+      <AppDialog
+        visible={permissionDialogVisible}
+        title="Location Permission Required"
+        message="Please allow location permission to track your workout."
+        icon="gps"
+        tone="warning"
+        confirmLabel="OK"
+        onConfirm={() => {
+          setPermissionDialogVisible(false);
+          navigation.goBack();
+        }}
+      />
+
+      <AppDialog
+        visible={finishDialogVisible}
+        title="Finish Workout?"
+        message="Are you sure you want to finish this workout?"
+        icon="stop"
+        tone="primary"
+        cancelLabel="Cancel"
+        confirmLabel="Finish"
+        onCancel={() => setFinishDialogVisible(false)}
+        onConfirm={confirmFinishWorkout}
+      />
+
+      <AppDialog
+        visible={saveErrorVisible}
+        title="Error"
+        message="Could not save the workout."
+        icon="alert"
+        tone="danger"
+        confirmLabel="OK"
+        onConfirm={() => setSaveErrorVisible(false)}
+      />
     </SafeAreaView>
   );
 };

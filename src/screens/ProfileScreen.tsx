@@ -1,7 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Modal,
   ScrollView,
@@ -13,6 +12,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {
+  AppDialog,
   AppHeader,
   AppIcon,
   PrimaryButton,
@@ -69,6 +69,8 @@ const ProfileScreen = ({navigation}: Props) => {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+  const [deletedDialogVisible, setDeletedDialogVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -150,10 +152,7 @@ const ProfileScreen = ({navigation}: Props) => {
     try {
       await deleteAccount(deletePassword);
       setDeleteModalVisible(false);
-      Alert.alert(
-        'Account Deleted',
-        'Your MyWalkMap account and profile data have been permanently deleted.',
-      );
+      setDeletedDialogVisible(true);
     } catch (err) {
       setDeleteError(
         err instanceof Error ? err.message : 'Unable to delete account.',
@@ -164,29 +163,21 @@ const ProfileScreen = ({navigation}: Props) => {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Sign Out?',
-      'Your local workout history and GPS routes will remain safely saved on this device.',
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            setLoggingOut(true);
-            try {
-              await signOut();
-            } catch (err) {
-              setErrorMessage(
-                err instanceof Error ? err.message : 'Unable to sign out.',
-              );
-            } finally {
-              setLoggingOut(false);
-            }
-          },
-        },
-      ],
-    );
+    setLogoutDialogVisible(true);
+  };
+
+  const confirmLogout = async () => {
+    setLogoutDialogVisible(false);
+    setLoggingOut(true);
+    try {
+      await signOut();
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Unable to sign out.',
+      );
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   if (isGuest || !user) {
@@ -465,6 +456,28 @@ const ProfileScreen = ({navigation}: Props) => {
           </View>
         </View>
       </Modal>
+
+      <AppDialog
+        visible={logoutDialogVisible}
+        title="Sign Out?"
+        message="Your local workout history and GPS routes will remain safely saved on this device."
+        icon="alert"
+        tone="danger"
+        cancelLabel="Cancel"
+        confirmLabel="Sign Out"
+        onCancel={() => setLogoutDialogVisible(false)}
+        onConfirm={confirmLogout}
+      />
+
+      <AppDialog
+        visible={deletedDialogVisible}
+        title="Account Deleted"
+        message="Your MyWalkMap account and profile data have been permanently deleted."
+        icon="check"
+        tone="primary"
+        confirmLabel="OK"
+        onConfirm={() => setDeletedDialogVisible(false)}
+      />
     </SafeAreaView>
   );
 };

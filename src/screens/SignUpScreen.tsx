@@ -14,6 +14,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {AppHeader, AppIcon, EmptyState, PrimaryButton} from '../components';
 import AuthInput from '../components/AuthInput';
+import {authConfig} from '../config/authConfig';
 import {useAuth} from '../context/AuthContext';
 import {COLORS, RADII, SPACING, TYPOGRAPHY} from '../theme/theme';
 
@@ -28,11 +29,13 @@ const SignUpScreen = ({navigation}: Props) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
 
   const handleSignUp = async () => {
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     const trimmedName = fullName.trim();
     const trimmedEmail = email.trim();
@@ -57,8 +60,10 @@ const SignUpScreen = ({navigation}: Props) => {
     setSubmitting(true);
     try {
       const result = await signUp(trimmedName, trimmedEmail, password);
-      if (result.needsEmailVerification) {
+      if (authConfig.requireEmailVerification && result.needsEmailVerification) {
         setNeedsVerification(true);
+      } else {
+        setSuccessMessage('Account created successfully! Welcome to MyWalkMap.');
       }
     } catch (err) {
       setErrorMessage(
@@ -69,7 +74,7 @@ const SignUpScreen = ({navigation}: Props) => {
     }
   };
 
-  if (needsVerification) {
+  if (authConfig.requireEmailVerification && needsVerification) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" />
@@ -115,6 +120,13 @@ const SignUpScreen = ({navigation}: Props) => {
             <View style={styles.errorBanner}>
               <AppIcon name="alert" size={16} color={COLORS.errorDark} />
               <Text style={styles.errorBannerText}>{errorMessage}</Text>
+            </View>
+          ) : null}
+
+          {successMessage ? (
+            <View style={styles.successBanner}>
+              <AppIcon name="check" size={16} color={COLORS.successDark} />
+              <Text style={styles.successBannerText}>{successMessage}</Text>
             </View>
           ) : null}
 
@@ -230,6 +242,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: COLORS.errorDark,
+  },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    backgroundColor: COLORS.successSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(46, 230, 110, 0.35)',
+    borderRadius: RADII.md,
+    padding: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  successBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.successDark,
   },
   submitButton: {
     marginTop: SPACING.sm,

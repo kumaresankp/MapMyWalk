@@ -1,3 +1,4 @@
+export {default as AppDialog} from './AppDialog';
 export {default as AppHeader} from './AppHeader';
 export {default as AppIcon} from './AppIcon';
 export type {AppIconName} from './AppIcon';

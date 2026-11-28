@@ -1,7 +1,6 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StatusBar,
@@ -12,7 +11,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 
-import {AppHeader, EmptyState, WorkoutCard} from '../components';
+import {AppDialog, AppHeader, EmptyState, WorkoutCard} from '../components';
 import {getWorkouts} from '../services/WorkoutStorage';
 import {formatDuration} from '../theme/formatters';
 import {COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY} from '../theme/theme';
@@ -30,6 +29,7 @@ const WorkoutHistoryScreen = ({navigation}: Props) => {
   const [workouts, setWorkouts] = useState<StoredWorkout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('All');
+  const [storageErrorVisible, setStorageErrorVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -45,8 +45,8 @@ const WorkoutHistoryScreen = ({navigation}: Props) => {
         } catch {
           if (isActive) {
             setIsLoading(false);
+            setStorageErrorVisible(true);
           }
-          Alert.alert('Storage Error', 'Unable to load saved workouts.');
         }
       };
 
@@ -177,6 +177,16 @@ const WorkoutHistoryScreen = ({navigation}: Props) => {
           )}
         </ScrollView>
       )}
+
+      <AppDialog
+        visible={storageErrorVisible}
+        title="Storage Error"
+        message="Unable to load saved workouts."
+        icon="alert"
+        tone="danger"
+        confirmLabel="OK"
+        onConfirm={() => setStorageErrorVisible(false)}
+      />
     </SafeAreaView>
   );
 };

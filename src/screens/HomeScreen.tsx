@@ -1,7 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   PermissionsAndroid,
   Platform,
@@ -18,6 +17,7 @@ import Geolocation from '@react-native-community/geolocation';
 import {useFocusEffect} from '@react-navigation/native';
 
 import {
+  AppDialog,
   AppHeader,
   AppIcon,
   EmptyState,
@@ -49,6 +49,17 @@ const HomeScreen = ({navigation}: Props) => {
   const [workouts, setWorkouts] = useState<StoredWorkout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dialogState, setDialogState] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    icon: 'shield' | 'alert';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    icon: 'shield',
+  });
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(12)).current;
@@ -184,10 +195,13 @@ const HomeScreen = ({navigation}: Props) => {
   };
 
   const showPrivacyNotice = () => {
-    Alert.alert(
-      'Privacy & Data',
-      'GPS Fitness Tracker uses your location only to record workout routes and store them locally on this device. At this stage, no cloud synchronization or automatic uploads are implemented.',
-    );
+    setDialogState({
+      visible: true,
+      title: 'Privacy & Data',
+      message:
+        'GPS Fitness Tracker uses your location only to record workout routes and store them locally on this device. At this stage, no cloud synchronization or automatic uploads are implemented.',
+      icon: 'shield',
+    });
   };
 
   const displayName =
@@ -425,9 +439,24 @@ const HomeScreen = ({navigation}: Props) => {
           try {
             await signOut();
           } catch (error: any) {
-            Alert.alert('Sign Out', error?.message || 'Unable to sign out.');
+            setDialogState({
+              visible: true,
+              title: 'Sign Out',
+              message: error?.message || 'Unable to sign out.',
+              icon: 'alert',
+            });
           }
         }}
+      />
+
+      <AppDialog
+        visible={dialogState.visible}
+        title={dialogState.title}
+        message={dialogState.message}
+        icon={dialogState.icon}
+        tone={dialogState.icon === 'alert' ? 'danger' : 'primary'}
+        confirmLabel="Got It"
+        onConfirm={() => setDialogState(prev => ({...prev, visible: false}))}
       />
     </SafeAreaView>
   );

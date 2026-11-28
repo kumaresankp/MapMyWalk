@@ -1,7 +1,6 @@
 import React, {useCallback, useState} from 'react';
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -12,6 +11,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 
 import {
+  AppDialog,
   AppHeader,
   AppIcon,
   EmptyState,
@@ -72,22 +72,16 @@ const WorkoutDetailScreen = ({route, navigation}: Props) => {
     }, [workoutId]),
   );
 
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+
   const deleteWorkoutEntry = () => {
-    Alert.alert(
-      'Delete Workout?',
-      'This will remove the workout from your history and route data.',
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteWorkout(workoutId);
-            navigation.goBack();
-          },
-        },
-      ],
-    );
+    setDeleteDialogVisible(true);
+  };
+
+  const confirmDeleteWorkout = async () => {
+    setDeleteDialogVisible(false);
+    await deleteWorkout(workoutId);
+    navigation.goBack();
   };
 
   if (isLoading) {
@@ -291,6 +285,18 @@ const WorkoutDetailScreen = ({route, navigation}: Props) => {
           style={styles.deleteButton}
         />
       </ScrollView>
+
+      <AppDialog
+        visible={deleteDialogVisible}
+        title="Delete Workout?"
+        message="This will remove the workout from your history and route data."
+        icon="trash"
+        tone="danger"
+        cancelLabel="Cancel"
+        confirmLabel="Delete"
+        onCancel={() => setDeleteDialogVisible(false)}
+        onConfirm={confirmDeleteWorkout}
+      />
     </SafeAreaView>
   );
 };

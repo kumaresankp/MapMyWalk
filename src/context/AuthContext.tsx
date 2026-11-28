@@ -9,6 +9,7 @@ import React, {
 import {Linking} from 'react-native';
 import type {Session, User} from '@supabase/supabase-js';
 
+import {authConfig} from '../config/authConfig';
 import {fetchProfile, upsertProfile} from '../services/ProfileService';
 import {isSupabaseConfigured, supabase} from '../services/supabase';
 import {UpdateProfileInput, UserProfile} from '../types/Auth';
@@ -285,7 +286,9 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
           email: email.trim().toLowerCase(),
           password,
           options: {
-            emailRedirectTo: EMAIL_REDIRECT_URL,
+            ...(authConfig.requireEmailVerification
+              ? {emailRedirectTo: EMAIL_REDIRECT_URL}
+              : {}),
             data: {
               full_name: cleanName,
             },
@@ -299,7 +302,14 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
         if (data.session) {
           setSession(data.session);
           setIsGuest(false);
+          await loadUserProfile(data.session.user);
           return {needsEmailVerification: false};
+        }
+
+        if (!authConfig.requireEmailVerification) {
+          throw new Error(
+            'Account created, but no active session was returned. Ensure "Confirm email" is disabled in Supabase Dashboard → Authentication → Email.',
+          );
         }
 
         return {needsEmailVerification: true};
@@ -310,7 +320,7 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
         );
       }
     },
-    [],
+    [loadUserProfile],
   );
 
   const signOut = useCallback(async () => {
